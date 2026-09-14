@@ -1,0 +1,19 @@
+# 统一换行符。仓库里一律存 LF、检出也用 LF。
+#
+# 为什么必须显式写：Windows 上 git 常配 core.autocrlf=true，
+# 那样 tools/shots.sh 会被检出成 CRLF，shebang 变成 "#!/usr/bin/env bash\r"，
+# 在 git-bash / WSL 下直接报 bad interpreter。
+* text=auto eol=lf
+
+*.sh   text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.html text eol=lf
+
+# 二进制，别动
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary

@@ -1,0 +1,23 @@
+# 依赖与构建产物
+node_modules/
+
+# 本机保留、不上传的东西
+#
+# _local/ 里放的是不该进仓库的文件：
+#   codexlook.js  —— 移植参考原件（Linux DO 版，作者 czm15053）。该脚本没有声明任何
+#                    开源许可，公开转载有版权风险，所以只在本机留档，仓库里改为在
+#                    README 中致谢并给出出处。
+#   1~5.png       —— 开发过程中的参考截图 / 带标注的 bug 报告截图。
+# 仓库里的效果图是 docs/screenshots/ 下那几张干净的。
+_local/
+
+# 测试用的临时 Chrome profile（无头 Chrome 结束后可能仍被占用，删不掉很正常）
+.p-*/
+.prof-*/
+.chrome-test*/
+.edge-test*/
+
+# 截图产物：可随时用 `npm run shots` 重新生成
+ref/shots/
+ref/c.out
+ref/c.err

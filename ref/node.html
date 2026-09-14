@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta name="Content-Type" content="text/html;charset=utf-8">
+    <meta name="Referrer" content="unsafe-url">
+    <meta content="True" name="HandheldFriendly">
+    
+    <meta name="theme-color" content="#ffffff">
+    
+    
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="detectify-verification" content="d0264f228155c7a1f72c3d91c17ce8fb" />
+<meta name="p:domain_verify" content="b87e3b55b409494aab88c1610b05a5f0"/>
+<meta name="alexaVerifyID" content="OFc8dmwZo7ttU4UCnDh1rKDtLlY" />
+<meta name="baidu-site-verification" content="D00WizvYyr" />
+<meta name="msvalidate.01" content="D9B08FEA08E3DA402BF07ABAB61D77DE" />
+<meta property="wb:webmaster" content="f2f4cb229bda06a4" />
+<meta name="google-site-verification" content="LM_cJR94XJIqcYJeOCscGVMWdaRUvmyz6cVOqkFplaU" />
+<meta name="wwads-cn-verify" content="c8ffe9a587b126f152ed3d89a146b445" />
+<script type="text/javascript" src="https://cdn.wwads.cn/js/makemoney.js" async></script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5060390720525238"
+     crossorigin="anonymous"></script>
+    
+    <title>V2EX › 编程</title>
+    <link rel="dns-prefetch" href="https://static.v2ex.com/" />
+<link rel="dns-prefetch" href="https://cdn.v2ex.com/" />
+<link rel="dns-prefetch" href="https://i.v2ex.co/" />
+<link rel="dns-prefetch" href="https://www.google-analytics.com/" />    
+    <style>
+        body {
+            min-width: 820px;
+            font-family: "Helvetica Neue", "Luxi Sans", "Segoe UI", "Hiragino Sans GB", "Microsoft Yahei", sans-serif, "Apple Logo";
+        }
+    </style>
+    <link rel="stylesheet" type="text/css" media="screen" href="/assets/eff83bb43f1b5b3b0e04c220ea510bee71884adf-combo.css?t=1789356600">
+    
+    <script>
+        const SITE_NIGHT = 0;
+    </script>
+    <link rel="stylesheet" href="/static/css/vendor/tomorrow.css?v=3c006808236080a5d98ba4e64b8f323f" type="text/css">
+    
+    <link rel="icon" sizes="192x192" href="/static/icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon-180.png?v=91e795b8b5d9e2cbf2d886c3d4b7d63c">
+    
+    <link rel="shortcut icon" href="/static/favicon.ico" type="image/png">
+    
+    
+    <link rel="manifest" href="/manifest.webmanifest">
+    <script>
+        const LANG = 'enus';
+        const FEATURES = ['search', 'favorite-nodes-sort'];
+    </script>
+    <script src="/assets/30141b4224c26d638178029e4a0c11d896e2980c-combo.js?t=1789356600" defer></script>
+    <meta name="description" content="Have fun and make money and art.">
+    
+    <link rel="alternate" type="application/atom+xml" href="/feed/programming.xml">
+    
+    
+    <link rel="canonical" href="https://www.v2ex.com/go/programming">
+    
+    
+    
+    <script>
+        var nodeName = "programming";
+        
+
+		document.addEventListener("DOMContentLoaded", function(event) {
+			protectTraffic();
+            autosize($('#topic_content'));
+
+            $("#topic_content").keydown(function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.which === 13) {
+                    e.preventDefault();
+                    $("#topic_content").parent().submit();
+                }
+            });
+            $("#topic_title").keydown(function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.which === 13) {
+                    e.preventDefault();
+                    $("#topic_title").parent().submit();
+                }
+            });
+
+            $("#topic_title").on('input', function(e) {
+                saveTopicDraft(nodeName, memberId);
+            });
+            $("#topic_content").on('input', function(e) {
+                saveTopicDraft(nodeName, memberId);
+            });
+
+            const topicLinks = document.getElementsByClassName('topic-link');
+const moreLinks = document.getElementsByClassName('count_livid');
+const orangeLinks = document.getElementsByClassName('count_orange');
+// merge non-duplicate arrays
+const links = Array.from(new Set([...topicLinks, ...moreLinks, ...orangeLinks]));
+for (link in links) {
+    let aLink = links[link];
+    if (aLink === undefined) {
+        continue;
+    }
+    if (!aLink.hasAttribute || !aLink.hasAttribute('href')) {
+        continue;
+    }
+    let href = aLink.getAttribute('href');
+    if (href && href.startsWith('/t/')) {
+        // href is something like "/t/1234#reply567"
+        const topicID = href.split('/')[2].split('#')[0];
+        const key = "tp" + topicID;
+        const value = lscache.get(key);
+        if (value) {
+            const anchor = href.split('#')[1];
+            const newHref = "/t/" + topicID + "?p=" + value + "#" + anchor;
+            aLink.setAttribute('href', newHref);
+            console.log("Set p for topic " + topicID + " to " + value + ": " + newHref);
+        }
+    }
+}
+
+            
+
+            tippy('[title]', {
+                placement: 'bottom',
+                arrow: true,
+                arrowTransform: 'translateY(-2px)'
+            });
+		    });
+	</script>
+    
+    <script type="application/ld+json">{"dateModified": "2021-01-08T16:15:46Z", "description": "Have fun and make money and art.", "url": "https://www.v2ex.com/go/programming", "image": "https://cdn.v2ex.com/navatar/0deb/1c54/413_large.png?m=1610122546", "dateCreated": "2011-06-04T20:49:25Z", "@context": "https://schema.org", "mainEntity": {"itemListElement": [{"url": "https://www.v2ex.com/t/1237807", "position": 1, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/g632104866", "@type": "Person", "name": "g632104866"}, "headline": "开源人的心声，关于为什么花精力开源 kkRepo ，是不是很多人不理解", "datePublished": "2026-08-28T02:57:53Z", "commentCount": 0, "url": "https://www.v2ex.com/t/1237807", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1237208", "position": 2, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/jacketma", "@type": "Person", "name": "jacketma"}, "headline": "把入口路由注释掉了，然后让 AI 一直在修改路过的代码...", "datePublished": "2026-08-25T15:38:45Z", "commentCount": 0, "url": "https://www.v2ex.com/t/1237208", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1234693", "position": 3, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/dosomethingcool", "@type": "Person", "name": "dosomethingcool"}, "headline": "clion 禁用检查的问题", "datePublished": "2026-08-15T16:47:16Z", "commentCount": 0, "url": "https://www.v2ex.com/t/1234693", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1226060", "position": 4, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/chunqiuyiyu", "@type": "Person", "name": "chunqiuyiyu"}, "headline": "我开始在代码中使用中文变量名了", "datePublished": "2026-07-09T04:10:48Z", "commentCount": 103, "url": "https://www.v2ex.com/t/1226060", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1226279", "position": 5, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/Ethan9527", "@type": "Person", "name": "Ethan9527"}, "headline": "软件工程真的一直在进步吗？", "datePublished": "2026-07-10T01:54:53Z", "commentCount": 0, "url": "https://www.v2ex.com/t/1226279", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1225736", "position": 6, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/Ethan9527", "@type": "Person", "name": "Ethan9527"}, "headline": "软件工程里，最昂贵的成本到底是什么？", "datePublished": "2026-07-08T01:36:03Z", "commentCount": 16, "url": "https://www.v2ex.com/t/1225736", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1225548", "position": 7, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/erbin", "@type": "Person", "name": "erbin"}, "headline": "[转载]信创全平台 C++17 交叉编译工具链", "datePublished": "2026-07-07T05:14:46Z", "commentCount": 5, "url": "https://www.v2ex.com/t/1225548", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1223095", "position": 8, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/BeijingBaby", "@type": "Person", "name": "BeijingBaby"}, "headline": "AI 正在淘汰小众编程语言", "datePublished": "2026-06-26T07:08:51Z", "commentCount": 1, "url": "https://www.v2ex.com/t/1223095", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1219508", "position": 9, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/emmathoermer", "@type": "Person", "name": "emmathoermer"}, "headline": "在 Codex 中可以直接调用 Claude 吗？", "datePublished": "2026-06-11T01:13:06Z", "commentCount": 8, "url": "https://www.v2ex.com/t/1219508", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1218085", "position": 10, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/nicooolas", "@type": "Person", "name": "nicooolas"}, "headline": "氛围编码生成的是代码，工程生成的是系统。氛围编程不是工程，大家怎么看？", "datePublished": "2026-06-05T01:49:56Z", "commentCount": 4, "url": "https://www.v2ex.com/t/1218085", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1215044", "position": 11, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/5wunian", "@type": "Person", "name": "5wunian"}, "headline": "Tikrok8 新版本更新", "datePublished": "2026-05-24T04:23:21Z", "commentCount": 1, "url": "https://www.v2ex.com/t/1215044", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1214836", "position": 12, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/sickworm", "@type": "Person", "name": "sickworm"}, "headline": "被 composer 2.5 震撼了", "datePublished": "2026-05-22T15:30:37Z", "commentCount": 22, "url": "https://www.v2ex.com/t/1214836", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1214630", "position": 13, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/xingso", "@type": "Person", "name": "xingso"}, "headline": "在 AI 时代,现在的新项目大家怎么开始呢?", "datePublished": "2026-05-22T02:37:50Z", "commentCount": 5, "url": "https://www.v2ex.com/t/1214630", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1211424", "position": 14, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/xuld", "@type": "Person", "name": "xuld"}, "headline": "[纯分享]怎么同时学会多个编程语言", "datePublished": "2026-05-09T04:50:35Z", "commentCount": 2, "url": "https://www.v2ex.com/t/1211424", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1206078", "position": 15, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/soleils", "@type": "Person", "name": "soleils"}, "headline": "现在 rust 是不是好起来了?", "datePublished": "2026-04-15T07:01:21Z", "commentCount": 2, "url": "https://www.v2ex.com/t/1206078", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1205286", "position": 16, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/AhFei", "@type": "Person", "name": "AhFei"}, "headline": "用 just 管理终端命令，使“命令即代码”", "datePublished": "2026-04-12T08:35:00Z", "commentCount": 0, "url": "https://www.v2ex.com/t/1205286", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1204511", "position": 17, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/Jh1n", "@type": "Person", "name": "Jh1n"}, "headline": "Qoder teams 版本设计反人性", "datePublished": "2026-04-09T02:08:34Z", "commentCount": 0, "url": "https://www.v2ex.com/t/1204511", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1203613", "position": 18, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/stevenrao", "@type": "Person", "name": "stevenrao"}, "headline": "AI 写代码真香喷；以后只要产品经理就可以了", "datePublished": "2026-04-05T02:30:10Z", "commentCount": 75, "url": "https://www.v2ex.com/t/1203613", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1203333", "position": 19, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/Naruto129", "@type": "Person", "name": "Naruto129"}, "headline": "warp 有没有什么代码补全和格式化的方案，想代替 cursor", "datePublished": "2026-04-03T06:08:40Z", "commentCount": 4, "url": "https://www.v2ex.com/t/1203333", "@type": "DiscussionForumPosting"}}, {"url": "https://www.v2ex.com/t/1201393", "position": 20, "@type": "ListItem", "item": {"author": {"url": "https://www.v2ex.com/member/wuxilaoshiren", "@type": "Person", "name": "wuxilaoshiren"}, "headline": "被 KIMI 玩弄的一天 这么 lj 我是没想到的", "datePublished": "2026-03-26T10:00:11Z", "commentCount": 0, "url": "https://www.v2ex.com/t/1201393", "@type": "DiscussionForumPosting"}}], "@type": "ItemList", "itemListOrder": "https://schema.org/ItemListOrderDescending", "numberOfItems": 1437}, "@type": "CollectionPage", "name": "编程"}</script>
+    
+
+    
+</head>
+<body>
+    
+    
+    <div id="Top">
+        <div class="content">
+            <div class="site-nav">
+                <a href="/" name="top" title="way to explore"><div id="Logo"></div></a>
+                <div id="search-container">
+                    <input id="search" type="text" maxlength="128" autocomplete="off" tabindex="1">
+                    <div id="search-result" class="box"></div>
+                </div>
+                <div class="tools" style="font-size: 13px;">
+                
+                    <a href="/" class="top">Home</a>
+                    <a href="/signup" class="top">Sign Up</a>
+                    <a href="/signin" class="top">Sign In</a>
+                
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="Wrapper">
+        <div class="content">
+            
+            <div id="Leftbar"></div>
+            <div id="Rightbar">
+                <div class="sep20"></div>
+                
+
+
+
+<div class="box">
+    <div class="pro-unit-title">节点订阅方式</div>
+    <div class="cell" style="padding: 8px; line-height: 100%;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="28"><a href="/feed/programming.xml"><img src="/static/img/planet/rss512.png" width="28" border="0" style="border-radius: 4px; vertical-align: bottom;" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle" align="left"><a href="/feed/programming.xml">RSS</a></td>
+                <td width="16" valign="middle" align="right"><a href="javascript:copyToClipboard(window.location.origin + '/feed/programming.xml')" title="复制 RSS 地址"><img src="/static/img/copy.svg" alt="copy RSS feed" align="absmiddle" width="16" /></a></td>
+            </tr>
+        </table>
+    </div>
+    <div class="cell" style="padding: 8px; line-height: 100%;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="28"><a href="/feed/programming.json"><img src="/static/img/json-feed.png" width="28" border="0" style="border-radius: 4px; vertical-align: bottom;" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle" align="left"><a href="/feed/programming.json">JSON Feed</a></td>
+                <td width="16" valign="middle" align="right"><a href="javascript:copyToClipboard(window.location.origin + '/feed/programming.json')" title="复制 JSON Feed 地址"><img src="/static/img/copy.svg" alt="copy JSON feed" align="absmiddle" width="16" /></a></td>
+            </tr>
+        </table>
+    </div>
+    <div class="cell" style="padding: 8px; line-height: 100%;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="28"><a href="/planet/about"><img src="/static/img/planet/planet128.png" width="28" border="0" style="vertical-align: bottom;" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle" align="left"><a href="/planet/about">使用 Planet 订阅节点更新</a></td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+
+
+
+
+<div class="sep"></div>
+        <div class="box">
+            <div class="inner" id="node_sidebar">
+                <div class="sidebar_units">
+  <a href="https://datapacket.com/china-dedicated-server-chinese?utm_source=v2ex&utm_medium=cpc&utm_campaign=programming&utm_content=static1" target="_blank" rel="nofollow"><img src="//cdn.v2ex.com/assets/sidebar/datapacket_20190221.png" border="0" width="100%" alt="DataPacket" /></a>
+  <div class="sep10"></div>
+  <a href="https://www.cdn77.com/cn?utm_source=v2ex&utm_medium=cpc&utm_campaign=programming&utm_content=static2" target="_blank" rel="nofollow"><img src="//cdn.v2ex.com/assets/sidebar/cdn77_20190117.png" border="0" width="100%" alt="CDN77" /></a>
+</div>
+                
+            </div>
+            <div class="sidebar_compliance"><a href="/advertise" target="_blank">Advertisement</a></div>
+        </div>
+<style type="text/css">
+
+.node-header > .page-content-header {
+    background-color: #001D25;
+}
+
+
+
+.node-header > .page-content-header a {
+    color: #03C8FF;
+}
+
+
+
+.node-header > .page-content-header a:hover {
+    color: #03C8FF;
+}
+
+
+</style>
+
+
+<div class="sep20"></div>
+<div class="box">
+    
+    
+    <div class="cell-top">
+        <span class="f12 gray"><div class="fr">9</div>Related Nodes</span>
+    </div>
+    <div class="nodes-sidebar-container">
+        
+        <node-sidebar
+        nodeId=300
+        nodeName="programmer"
+        nodeTitle="程序员"
+        nodeAvatar="https://cdn.v2ex.com/navatar/94f6/d7e0/300_normal.png?m=1733731195"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=52
+        nodeName="hardware"
+        nodeTitle="硬件"
+        nodeAvatar="https://cdn.v2ex.com/navatar/9a11/5815/52_normal.png?m=1630576655"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=56
+        nodeName="internet"
+        nodeTitle="互联网"
+        nodeAvatar="https://cdn.v2ex.com/navatar/9f61/408e/56_normal.png?m=1628212285"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=55
+        nodeName="games"
+        nodeTitle="游戏"
+        nodeAvatar="https://cdn.v2ex.com/navatar/b53b/3a3d/55_normal.png?m=1726310276"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=421
+        nodeName="db"
+        nodeTitle="数据库"
+        nodeAvatar="https://cdn.v2ex.com/navatar/e0c6/4119/421_normal.png?m=1586514183"
+        ></node-sidebar>
+        
+        <div onclick="toggleMoreNodes(this, 'nodes-more-related', 4, `Show 4 more related nodes`, `Hide extra nodes`);" class="toggle-more-nodes"><i class="fa fa-caret-right"></i> &nbsp;<span>Show 4 more related nodes</span></div>
+        <div id="nodes-more-related" style="display: none;">
+        
+        
+        <node-sidebar
+        nodeId=417
+        nodeName="software"
+        nodeTitle="软件"
+        nodeAvatar="https://cdn.v2ex.com/navatar/41ae/36ec/417_normal.png?m=1625409262"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=678
+        nodeName="ml"
+        nodeTitle="机器学习"
+        nodeAvatar="https://cdn.v2ex.com/navatar/9fe8/593a/678_normal.png?m=1628872967"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=414
+        nodeName="os"
+        nodeTitle="操作系统"
+        nodeAvatar="https://cdn.v2ex.com/navatar/6680/8e32/414_normal.png?m=1436505183"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=883
+        nodeName="nlp"
+        nodeTitle="自然语言处理"
+        nodeAvatar="https://cdn.v2ex.com/navatar/210f/760a/883_normal.png?m=1620107228"
+        ></node-sidebar>
+        
+        
+        
+        </div>
+        
+    </div>
+    
+    
+    <div class="cell-top">
+        <span class="f12 gray">Child Nodes</span>
+    </div>
+    <div class="nodes-sidebar-container">
+        
+        <node-sidebar
+        nodeId=90
+        nodeName="python"
+        nodeTitle="Python"
+        nodeAvatar="https://cdn.v2ex.com/navatar/8613/985e/90_normal.png?m=1648339948"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=63
+        nodeName="java"
+        nodeTitle="Java"
+        nodeAvatar="https://cdn.v2ex.com/navatar/03af/dbd6/63_normal.png?m=1644490200"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=62
+        nodeName="php"
+        nodeTitle="PHP"
+        nodeAvatar="https://cdn.v2ex.com/navatar/44f6/83a8/62_normal.png?m=1644475743"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=375
+        nodeName="go"
+        nodeTitle="Go 编程语言"
+        nodeAvatar="https://cdn.v2ex.com/navatar/f61d/6947/375_normal.png?m=1658910399"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=146
+        nodeName="js"
+        nodeTitle="JavaScript"
+        nodeAvatar="https://cdn.v2ex.com/navatar/a5e0/0132/146_normal.png?m=1650095218"
+        ></node-sidebar>
+        
+        <div onclick="toggleMoreNodes(this, 'nodes-more-children', 32, `Show 32 more child nodes`, `Hide extra nodes`);" class="toggle-more-nodes"><i class="fa fa-caret-right"></i> &nbsp;<span>Show 32 more child nodes</span></div>
+        <div id="nodes-more-children" style="display: none;">
+        
+        
+        <node-sidebar
+        nodeId=57
+        nodeName="c"
+        nodeTitle="C"
+        nodeAvatar="https://cdn.v2ex.com/navatar/72b3/2a1f/57_normal.png?m=1575483197"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=1063
+        nodeName="cpp"
+        nodeTitle="C++"
+        nodeAvatar="https://cdn.v2ex.com/navatar/6c34/0f25/1063_normal.png?m=1645243654"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=139
+        nodeName="css"
+        nodeTitle="CSS"
+        nodeAvatar="https://cdn.v2ex.com/navatar/e00d/a03b/139_normal.png?m=1644497140"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=790
+        nodeName="rust"
+        nodeTitle="Rust"
+        nodeAvatar="https://cdn.v2ex.com/navatar/2dac/e78f/790_normal.png?m=1632977380"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=638
+        nodeName="swift"
+        nodeTitle="Swift"
+        nodeAvatar="https://cdn.v2ex.com/navatar/4c27/cea8/638_normal.png?m=1661630260"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=60
+        nodeName="html"
+        nodeTitle="HTML"
+        nodeAvatar="https://cdn.v2ex.com/navatar/072b/030b/60_normal.png?m=1640171734"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=349
+        nodeName="dotnet"
+        nodeTitle=".NET"
+        nodeAvatar="https://cdn.v2ex.com/navatar/0bb4/aec1/349_normal.png?m=1579009691"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=1005
+        nodeName="csharp"
+        nodeTitle="C#"
+        nodeAvatar="https://cdn.v2ex.com/navatar/2387/337b/1005_normal.png?m=1579006175"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=137
+        nodeName="re"
+        nodeTitle="正则表达式"
+        nodeAvatar="https://cdn.v2ex.com/navatar/3988/c7f8/137_normal.png?m=1643852696"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=477
+        nodeName="editors"
+        nodeTitle="编辑器"
+        nodeAvatar="https://cdn.v2ex.com/navatar/7407/1a67/477_normal.png?m=1439978846"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=367
+        nodeName="ruby"
+        nodeTitle="Ruby"
+        nodeAvatar="https://cdn.v2ex.com/navatar/0504/9e90/367_normal.png?m=1579009612"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=863
+        nodeName="qt"
+        nodeTitle="Qt"
+        nodeAvatar="https://cdn.v2ex.com/navatar/19b6/5066/863_normal.png?m=1646756512"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=982
+        nodeName="kotlin"
+        nodeTitle="Kotlin"
+        nodeAvatar="https://cdn.v2ex.com/navatar/fec8/d47d/982_normal.png?m=1585380699"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=530
+        nodeName="meteor"
+        nodeTitle="Meteor"
+        nodeAvatar="https://cdn.v2ex.com/navatar/d64a/340b/530_normal.png?m=1414522195"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=124
+        nodeName="scala"
+        nodeTitle="Scala"
+        nodeAvatar="https://cdn.v2ex.com/navatar/c8ff/e9a5/124_normal.png?m=1488098428"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=147
+        nodeName="lua"
+        nodeTitle="Lua"
+        nodeAvatar="https://cdn.v2ex.com/navatar/8d5e/957f/147_normal.png?m=1586483655"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=275
+        nodeName="lisp"
+        nodeTitle="Lisp"
+        nodeAvatar="https://cdn.v2ex.com/navatar/6392/3f49/275_normal.png?m=1340401232"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=531
+        nodeName="haskell"
+        nodeTitle="Haskell"
+        nodeAvatar="https://cdn.v2ex.com/navatar/0fcb/c61a/531_normal.png?m=1421573082"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=174
+        nodeName="erlang"
+        nodeTitle="Erlang"
+        nodeAvatar="https://cdn.v2ex.com/navatar/bf82/2969/174_normal.png?m=1323093961"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=872
+        nodeName="elixir"
+        nodeTitle="Elixir 编程语言"
+        nodeAvatar="https://cdn.v2ex.com/navatar/43fe/aeee/872_normal.png?m=1634038949"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=742
+        nodeName="dart"
+        nodeTitle="Dart"
+        nodeAvatar="https://cdn.v2ex.com/navatar/e945/50c9/742_normal.png?m=1385212827"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=186
+        nodeName="assembly"
+        nodeTitle="汇编"
+        nodeAvatar="/static/img/node_default_normal.png"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=123
+        nodeName="perl"
+        nodeTitle="Perl"
+        nodeAvatar="https://cdn.v2ex.com/navatar/202c/b962/123_normal.png?m=1439985149"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=415
+        nodeName="vcs"
+        nodeTitle="版本控制系统"
+        nodeAvatar="/static/img/node_default_normal.png"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=472
+        nodeName="clojure"
+        nodeTitle="Clojure"
+        nodeAvatar="https://cdn.v2ex.com/navatar/ef57/5e88/472_normal.png?m=1547552725"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=416
+        nodeName="frameworks"
+        nodeTitle="编程框架"
+        nodeAvatar="https://cdn.v2ex.com/navatar/8fe0/093b/416_normal.png?m=1335305316"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=396
+        nodeName="gcc"
+        nodeTitle="GCC"
+        nodeAvatar="/static/img/node_default_normal.png"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=1064
+        nodeName="objc"
+        nodeTitle="Objective-C"
+        nodeAvatar="/static/img/node_default_normal.png"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=1068
+        nodeName="wenyan"
+        nodeTitle="文言文编程语言"
+        nodeAvatar="/static/img/node_default_normal.png"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=978
+        nodeName="racket"
+        nodeTitle="Racket"
+        nodeAvatar="https://cdn.v2ex.com/navatar/2ab5/6412/978_normal.png?m=1565786996"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=420
+        nodeName="basic"
+        nodeTitle="BASIC"
+        nodeAvatar="https://cdn.v2ex.com/navatar/b6f0/479a/420_normal.png?m=1346453734"
+        ></node-sidebar>
+        
+        
+        <node-sidebar
+        nodeId=473
+        nodeName="coldfusion"
+        nodeTitle="ColdFusion"
+        nodeAvatar="https://cdn.v2ex.com/navatar/2050/e03c/473_normal.png?m=1340401368"
+        ></node-sidebar>
+        
+        
+        
+        </div>
+        
+    </div>
+    
+</div>
+
+
+
+
+            </div>
+            <div id="Main">
+                <div class="sep20"></div>
+                
+<div class="box box-title node-header">
+    <div class="cell page-content-header">
+        
+        <img src="https://cdn.v2ex.com/navatar/0deb/1c54/413_large.png?m=1610122546" border="0" align="default" width="64" alt="programming" />
+        
+        <div>
+            <div class="title">
+                <div class="node-breadcrumb"><a href="/">V2EX</a> <span class="chevron">&nbsp;›&nbsp;</span> 编程</div>
+                <span class="topic-count">Topics <strong>1,437</strong></span>
+                <span class="node-feed">
+                    <a href="/feed/programming.xml" target="_blank"><img src="/static/img/rss@2x.png?v=75acbbff5b6041ae197f371447ab0c07" alt="RSS" /></a>
+                    <a href="/feed/programming.json" target="_blank"><img src="/static/img/json-feed.png?v=a2d98663319ecfabacf796fab6a005a7" alt="JSON Feed" /></a>
+                </span>
+            </div>
+            
+            <div class="intro">Have fun and make money and art.</div>
+            
+        </div>
+    </div>
+    
+</div>
+
+<div class="box">
+    
+    
+<div class="cell ps_container">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+            <td width="92%" align="left"><a href="/go/programming?p=1" class="page_current">1</a> &nbsp;<a href="/go/programming?p=2" class="page_normal">2</a> &nbsp;<a href="/go/programming?p=3" class="page_normal">3</a> &nbsp;<a href="/go/programming?p=4" class="page_normal">4</a> &nbsp;<a href="/go/programming?p=5" class="page_normal">5</a> &nbsp;<a href="/go/programming?p=6" class="page_normal">6</a> &nbsp;<a href="/go/programming?p=7" class="page_normal">7</a> &nbsp;<a href="/go/programming?p=8" class="page_normal">8</a> &nbsp;<a href="/go/programming?p=9" class="page_normal">9</a> &nbsp;<a href="/go/programming?p=10" class="page_normal">10</a><span class="fade"> ... </span><a href="/go/programming?p=72" class="page_normal">72</a> &nbsp; <input type="number" class="page_input" autocomplete="off" value="1" min="1" max="72"  onkeydown = "if (event.keyCode == 13)
+                    location.href = '/go/programming?p=' + this.value" /></td>
+            <td width="8%" align="right">
+                <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                        <td width="50%" align="center" class="super normal button disable_now" style="display: table-cell; border-right: none; border-top-right-radius: 0px; border-bottom-right-radius: 0px;"  >❮</td>
+                        <td width="50%" align="center" class="super normal_page_right button" style="display: table-cell; border-top-left-radius: 0px; border-bottom-left-radius: 0px;" onclick="location.href='/go/programming?p=2';" onmouseover="$(this).addClass('hover_now');" onmousedown="$(this).addClass('active_now');" onmouseleave="$(this).removeClass('hover_now'); $(this).removeClass('active_now');" title="Next Page" >❯</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>
+
+    <div id="TopicsNode">
+    
+    <div class="cell from_510131 t_1237807">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/g632104866"><img src="https://cdn.v2ex.com/avatar/01d5/38d4/510131_xlarge.png?m=1783481882" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="g632104866" data-uid="510131" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1237807#reply0" class="topic-link" id="topic-link-1237807">开源人的心声，关于为什么花精力开源 kkRepo ，是不是很多人不理解</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/g632104866">g632104866</a></strong> &nbsp;•&nbsp; <span title="2026-08-28 10:57:53 +08:00">Aug 28</span></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_239594 t_1237208">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/jacketma"><img src="https://cdn.v2ex.com/gravatar/a941f83ac4192740c2e1f95676ce23c5?s=48&d=retro" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="jacketma" data-uid="239594" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1237208#reply0" class="topic-link" id="topic-link-1237208">把入口路由注释掉了，然后让 AI 一直在修改路过的代码...</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/jacketma">jacketma</a></strong> &nbsp;•&nbsp; <span title="2026-08-25 23:38:45 +08:00">Aug 25</span></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_569869 t_1234693">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/dosomethingcool"><img src="https://cdn.v2ex.com/avatar/fd2b/a60b/569869_xlarge.png?m=1780845965" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="dosomethingcool" data-uid="569869" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1234693#reply0" class="topic-link" id="topic-link-1234693">clion 禁用检查的问题</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/dosomethingcool">dosomethingcool</a></strong> &nbsp;•&nbsp; <span title="2026-08-16 00:47:16 +08:00">Aug 16</span></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_162504 t_1226060">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/chunqiuyiyu"><img src="https://cdn.v2ex.com/avatar/8fea/8dd3/162504_large.png?m=1787038367" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="chunqiuyiyu" data-uid="162504" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1226060#reply103" class="topic-link" id="topic-link-1226060">我开始在代码中使用中文变量名了</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/chunqiuyiyu">chunqiuyiyu</a></strong> &nbsp;•&nbsp; <span title="2026-07-13 12:20:20 +08:00">Jul 13</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/nevin47">nevin47</a></strong></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                    <a href="/t/1226060#reply103" class="count_livid">103</a>
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_595243 t_1226279">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/Ethan9527"><img src="https://cdn.v2ex.com/avatar/0d58/88b3/595243_xlarge.png?m=1718719619" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="Ethan9527" data-uid="595243" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1226279#reply0" class="topic-link" id="topic-link-1226279">软件工程真的一直在进步吗？</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/Ethan9527">Ethan9527</a></strong> &nbsp;•&nbsp; <span title="2026-07-10 09:54:53 +08:00">Jul 10</span></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    <div style="border-bottom: 1px solid var(--box-border-color);">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5060390720525238"
+        crossorigin="anonymous"></script>
+<ins class="adsbygoogle"
+     style="display: block; height: 72px;"
+     data-ad-format="fluid"
+     data-ad-layout-key="-hs-19-p-2z+is"
+     data-ad-client="ca-pub-5060390720525238"
+     data-ad-slot="1009394990"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+</div>
+    
+    
+    <div class="cell from_595243 t_1225736">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/Ethan9527"><img src="https://cdn.v2ex.com/avatar/0d58/88b3/595243_xlarge.png?m=1718719619" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="Ethan9527" data-uid="595243" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1225736#reply16" class="topic-link" id="topic-link-1225736">软件工程里，最昂贵的成本到底是什么？</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/Ethan9527">Ethan9527</a></strong> &nbsp;•&nbsp; <span title="2026-07-08 14:55:33 +08:00">Jul 8</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/duanxianze">duanxianze</a></strong></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                    <a href="/t/1225736#reply16" class="count_livid">16</a>
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_795362 t_1225548">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/erbin"><img src="https://cdn.v2ex.com/avatar/ad1f/e6c2/795362_xlarge.png?m=1787714652" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="erbin" data-uid="795362" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1225548#reply5" class="topic-link" id="topic-link-1225548">[转载]信创全平台 C++17 交叉编译工具链</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/erbin">erbin</a></strong> &nbsp;•&nbsp; <span title="2026-07-08 10:06:05 +08:00">Jul 8</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/nmgwddj">nmgwddj</a></strong></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                    <a href="/t/1225548#reply5" class="count_livid">5</a>
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_40195 t_1223095">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/BeijingBaby"><img src="https://cdn.v2ex.com/avatar/5129/e8be/40195_xlarge.png?m=1783687791" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="BeijingBaby" data-uid="40195" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1223095#reply1" class="topic-link" id="topic-link-1223095">AI 正在淘汰小众编程语言</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/BeijingBaby">BeijingBaby</a></strong> &nbsp;<div class="badges"><div class="badge pro">PRO</div></div> &nbsp;•&nbsp; <span title="2026-06-30 11:18:02 +08:00">Jun 30</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/saySilence">saySilence</a></strong></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                    <a href="/t/1223095#reply1" class="count_livid">1</a>
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_798311 t_1219508">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/emmathoermer"><img src="https://cdn.v2ex.com/avatar/8358/3eff/798311_xlarge.png?m=1784930360" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="emmathoermer" data-uid="798311" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1219508#reply8" class="topic-link" id="topic-link-1219508">在 Codex 中可以直接调用 Claude 吗？</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/emmathoermer">emmathoermer</a></strong> &nbsp;•&nbsp; <span title="2026-06-11 10:40:37 +08:00">Jun 11</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/FawkesV">FawkesV</a></strong></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                    <a href="/t/1219508#reply8" class="count_livid">8</a>
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_702381 t_1218085">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/nicooolas"><img src="https://cdn.v2ex.com/avatar/a9a3/f597/702381_xlarge.png?m=1779957500" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="nicooolas" data-uid="702381" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1218085#reply4" class="topic-link" id="topic-link-1218085">氛围编码生成的是代码，工程生成的是系统。氛围编程不是工程，大家怎么看？</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/nicooolas">nicooolas</a></strong> &nbsp;•&nbsp; <span title="2026-06-05 15:51:08 +08:00">Jun 5</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/Zhuzhuchenyan">Zhuzhuchenyan</a></strong></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                    <a href="/t/1218085#reply4" class="count_livid">4</a>
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_389496 t_1215044">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/5wunian"><img src="https://cdn.v2ex.com/avatar/27e5/9fbb/389496_xlarge.png?m=1784880190" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="5wunian" data-uid="389496" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1215044#reply1" class="topic-link" id="topic-link-1215044">Tikrok8 新版本更新</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/5wunian">5wunian</a></strong> &nbsp;•&nbsp; <span title="2026-05-24 19:14:05 +08:00">May 24</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/5wunian">5wunian</a></strong></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                    <a href="/t/1215044#reply1" class="count_livid">1</a>
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_279943 t_1214836">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/sickworm"><img src="https://cdn.v2ex.com/gravatar/ca735d94f1dbef0c0242df255d94fb10?s=48&d=retro" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="sickworm" data-uid="279943" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1214836#reply22" class="topic-link" id="topic-link-1214836">被 composer 2.5 震撼了</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/sickworm">sickworm</a></strong> &nbsp;<div class="badges"><div class="badge pro">PRO</div></div> &nbsp;•&nbsp; <span title="2026-06-01 15:29:29 +08:00">Jun 1</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/sickworm">sickworm</a></strong></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                    <a href="/t/1214836#reply22" class="count_livid">22</a>
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    <div style="border-bottom: 1px solid var(--box-border-color);">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5060390720525238"
+        crossorigin="anonymous"></script>
+<ins class="adsbygoogle"
+     style="display: block; height: 72px;"
+     data-ad-format="fluid"
+     data-ad-layout-key="-hs-19-p-2z+is"
+     data-ad-client="ca-pub-5060390720525238"
+     data-ad-slot="1009394990"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+</div>
+    
+    
+    <div class="cell from_102582 t_1214630">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/xingso"><img src="https://cdn.v2ex.com/avatar/c3bd/2762/102582_large.png?m=1587805550" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="xingso" data-uid="102582" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1214630#reply5" class="topic-link" id="topic-link-1214630">在 AI 时代,现在的新项目大家怎么开始呢?</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/xingso">xingso</a></strong> &nbsp;•&nbsp; <span title="2026-05-22 15:28:53 +08:00">May 22</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/qfdk">qfdk</a></strong></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                    <a href="/t/1214630#reply5" class="count_livid">5</a>
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_67405 t_1211424">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/xuld"><img src="https://cdn.v2ex.com/gravatar/a5cc6f373106ab818eeb0869ed756b64?s=48&d=retro" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="xuld" data-uid="67405" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1211424#reply2" class="topic-link" id="topic-link-1211424">[纯分享]怎么同时学会多个编程语言</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/xuld">xuld</a></strong> &nbsp;•&nbsp; <span title="2026-05-09 13:00:06 +08:00">May 9</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/cabing">cabing</a></strong></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                    <a href="/t/1211424#reply2" class="count_livid">2</a>
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_314786 t_1206078">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/soleils"><img src="https://cdn.v2ex.com/gravatar/6b20eecbba98f121270fa56f0886b2f4?s=48&d=retro" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="soleils" data-uid="314786" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1206078#reply2" class="topic-link" id="topic-link-1206078">现在 rust 是不是好起来了?</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/soleils">soleils</a></strong> &nbsp;•&nbsp; <span title="2026-04-16 14:25:49 +08:00">Apr 16</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/soleils">soleils</a></strong></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                    <a href="/t/1206078#reply2" class="count_livid">2</a>
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_592739 t_1205286">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/AhFei"><img src="https://cdn.v2ex.com/gravatar/3f43d772c3f166336cbc2c328549e6dd?s=48&d=retro" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="AhFei" data-uid="592739" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1205286#reply0" class="topic-link" id="topic-link-1205286">用 just 管理终端命令，使“命令即代码”</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/AhFei">AhFei</a></strong> &nbsp;•&nbsp; <span title="2026-04-12 16:35:00 +08:00">Apr 12</span></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_456767 t_1204511">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/Jh1n"><img src="https://cdn.v2ex.com/avatar/5853/1159/456767_large.png?m=1685327860" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="Jh1n" data-uid="456767" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1204511#reply0" class="topic-link" id="topic-link-1204511">Qoder teams 版本设计反人性</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/Jh1n">Jh1n</a></strong> &nbsp;•&nbsp; <span title="2026-04-09 10:08:34 +08:00">Apr 9</span></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_75489 t_1203613">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/stevenrao"><img src="https://cdn.v2ex.com/avatar/50a3/beeb/75489_large.png?m=1414069147" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="stevenrao" data-uid="75489" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1203613#reply75" class="topic-link" id="topic-link-1203613">AI 写代码真香喷；以后只要产品经理就可以了</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/stevenrao">stevenrao</a></strong> &nbsp;•&nbsp; <span title="2026-04-07 17:12:33 +08:00">Apr 7</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/snw">snw</a></strong></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                    <a href="/t/1203613#reply75" class="count_livid">75</a>
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_446234 t_1203333">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/Naruto129"><img src="https://cdn.v2ex.com/avatar/f143/38ee/446234_large.png?m=1787214876" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="Naruto129" data-uid="446234" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1203333#reply4" class="topic-link" id="topic-link-1203333">warp 有没有什么代码补全和格式化的方案，想代替 cursor</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/Naruto129">Naruto129</a></strong> &nbsp;•&nbsp; <span title="2026-04-03 14:13:26 +08:00">Apr 3</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/Naruto129">Naruto129</a></strong></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                    <a href="/t/1203333#reply4" class="count_livid">4</a>
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="cell from_597819 t_1201393">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td width="48" valign="top" align="center"><a href="/member/wuxilaoshiren"><img src="https://cdn.v2ex.com/gravatar/3073d603f7b00af33bc4ace2753c99f2?s=48&d=retro" class="avatar" border="0" align="default" width="48" style="width: 48px; max-height: 48px;" alt="wuxilaoshiren" data-uid="597819" /></a></td>
+                <td width="10"></td>
+                <td width="auto" valign="middle"><span class="item_title"><a href="/t/1201393#reply0" class="topic-link" id="topic-link-1201393">被 KIMI 玩弄的一天 这么 lj 我是没想到的</a></span>
+                <div class="sep5"></div>
+                <span class="topic_info"><strong><a href="/member/wuxilaoshiren">wuxilaoshiren</a></strong> &nbsp;•&nbsp; <span title="2026-03-26 18:00:11 +08:00">Mar 26</span></span>
+                </td>
+                <td width="70" align="right" valign="middle">
+                    
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    <div style="border-bottom: 1px solid var(--box-border-color);">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5060390720525238"
+        crossorigin="anonymous"></script>
+<ins class="adsbygoogle"
+     style="display: block; height: 72px;"
+     data-ad-format="fluid"
+     data-ad-layout-key="-hs-19-p-2z+is"
+     data-ad-client="ca-pub-5060390720525238"
+     data-ad-slot="1009394990"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+</div>
+    
+    
+    </div>
+    
+<div class="cell ps_container">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+            <td width="92%" align="left"><a href="/go/programming?p=1" class="page_current">1</a> &nbsp;<a href="/go/programming?p=2" class="page_normal">2</a> &nbsp;<a href="/go/programming?p=3" class="page_normal">3</a> &nbsp;<a href="/go/programming?p=4" class="page_normal">4</a> &nbsp;<a href="/go/programming?p=5" class="page_normal">5</a> &nbsp;<a href="/go/programming?p=6" class="page_normal">6</a> &nbsp;<a href="/go/programming?p=7" class="page_normal">7</a> &nbsp;<a href="/go/programming?p=8" class="page_normal">8</a> &nbsp;<a href="/go/programming?p=9" class="page_normal">9</a> &nbsp;<a href="/go/programming?p=10" class="page_normal">10</a><span class="fade"> ... </span><a href="/go/programming?p=72" class="page_normal">72</a> &nbsp; <input type="number" class="page_input" autocomplete="off" value="1" min="1" max="72"  onkeydown = "if (event.keyCode == 13)
+                    location.href = '/go/programming?p=' + this.value" /></td>
+            <td width="8%" align="right">
+                <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                        <td width="50%" align="center" class="super normal button disable_now" style="display: table-cell; border-right: none; border-top-right-radius: 0px; border-bottom-right-radius: 0px;"  >❮</td>
+                        <td width="50%" align="center" class="super normal_page_right button" style="display: table-cell; border-top-left-radius: 0px; border-bottom-left-radius: 0px;" onclick="location.href='/go/programming?p=2';" onmouseover="$(this).addClass('hover_now');" onmousedown="$(this).addClass('active_now');" onmouseleave="$(this).removeClass('hover_now'); $(this).removeClass('active_now');" title="Next Page" >❯</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>
+
+    <div class="cell flex-one-row gap10">
+        <span class="gray">Topics 1 to 20 of 1437</span>
+        <div class="spacer"></div>
+        <div>2304 people have favorited this node</div>
+        
+    </div>
+</div>
+
+
+
+            </div>
+            
+            
+        </div>
+        <div class="c"></div>
+        <div class="sep20"></div>
+    </div>
+    <div id="Bottom">
+        <div class="content">
+            <div class="inner">
+                <div class="sep10"></div>
+                    <div class="fr">
+                        <a href="https://www.digitalocean.com/?refcode=1b51f1a7651d" target="_blank"><div id="DigitalOcean"></div></a>
+                    </div>
+                    <strong><a href="/about" class="dark" target="_self">About</a> &nbsp; <span class="snow">·</span> &nbsp; <a href="https://edge.v2ex.com/help" class="dark" target="_self">Help</a> &nbsp; <span class="snow">·</span> &nbsp; <a href="/pro/about" class="dark" target="_self">Advertise</a> &nbsp; <span class="snow">·</span> &nbsp; <a href="https://blog.v2ex.com/" class="dark" target="_blank">Blog</a> &nbsp; <span class="snow">·</span> &nbsp; <a href="https://edge.v2ex.com/help/api" class="dark" target="_self">API</a> &nbsp; <span class="snow">·</span> &nbsp; <a href="/faq" class="dark" target="_self">FAQ</a> &nbsp; <span class="snow">·</span> &nbsp; <a href="/privacy" class="dark" target="_self">Privacy</a> &nbsp; <span class="snow">·</span> &nbsp; <a href="https://edge.v2ex.com/solana" class="dark" target="_self">Solana</a> &nbsp; <span class="snow">·</span> &nbsp; 5740 Online</strong> &nbsp; <span class="fade">Highest 6679</span> &nbsp; <span class="snow">·</span> &nbsp; <a href="/select/language" class="f11"><img src="/static/img/language.png?v=6a5cfa731dc71a3769f6daace6784739" width="16" align="absmiddle" id="ico-select-language" /> &nbsp; Select Language</a>
+                    <div class="sep20"></div>
+                    创意工作者们的社区
+                    <div class="sep5"></div>
+                    World is powered by solitude
+                    <div class="sep20"></div>
+                    <span class="small fade">VERSION: 3.9.8.5 · 71ms · <a href="/worldclock#utc">UTC 03:39</a> · <a href="/worldclock#pvg">PVG 11:39</a> · <a href="/worldclock#lax">LAX 20:39</a> · <a href="/worldclock#jfk">JFK 23:39</a><br />♥ Do have faith in what you're doing.</span>
+                <div class="sep10"></div>
+            </div>
+        </div>
+    </div>
+
+    
+
+    
+
+    
+    <script src="/b/i/hux-fJNyk5_SfgQw-laccUUSdTzytWdZ2jHhFDUxtqV3cY87x8RyP_1w15Qbc3XiNLg6tyS_NdXNPAjzEfdjDXlwJfz9cPpK7af6yfuSr5PKVKXXp8KKDYtFQRT6SgmccN7uJct-tiRqJPG2lZ3xnBMV-8yuPJR9hhBC0SybuW8="></script>
+    
+
+    
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-11940834-2', 'v2ex.com');
+      ga('send', 'pageview');
+      
+ga('send', 'event', 'Node', 'list', 'programming');
+
+
+    </script>
+    
+
+    
+<button class="scroll-top" data-scroll="up" type="button"><span>❯<span></button>
+</body>
+</html>

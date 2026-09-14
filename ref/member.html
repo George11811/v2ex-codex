@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta name="Content-Type" content="text/html;charset=utf-8">
+    <meta name="Referrer" content="unsafe-url">
+    <meta content="True" name="HandheldFriendly">
+    
+    <meta name="theme-color" content="#ffffff">
+    
+    
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="detectify-verification" content="d0264f228155c7a1f72c3d91c17ce8fb" />
+<meta name="p:domain_verify" content="b87e3b55b409494aab88c1610b05a5f0"/>
+<meta name="alexaVerifyID" content="OFc8dmwZo7ttU4UCnDh1rKDtLlY" />
+<meta name="baidu-site-verification" content="D00WizvYyr" />
+<meta name="msvalidate.01" content="D9B08FEA08E3DA402BF07ABAB61D77DE" />
+<meta property="wb:webmaster" content="f2f4cb229bda06a4" />
+<meta name="google-site-verification" content="LM_cJR94XJIqcYJeOCscGVMWdaRUvmyz6cVOqkFplaU" />
+<meta name="wwads-cn-verify" content="c8ffe9a587b126f152ed3d89a146b445" />
+<script type="text/javascript" src="https://cdn.wwads.cn/js/makemoney.js" async></script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5060390720525238"
+     crossorigin="anonymous"></script>
+    
+    <title>V2EX › pwinner</title>
+    <link rel="dns-prefetch" href="https://static.v2ex.com/" />
+<link rel="dns-prefetch" href="https://cdn.v2ex.com/" />
+<link rel="dns-prefetch" href="https://i.v2ex.co/" />
+<link rel="dns-prefetch" href="https://www.google-analytics.com/" />    
+    <style>
+        body {
+            min-width: 820px;
+            font-family: "Helvetica Neue", "Luxi Sans", "Segoe UI", "Hiragino Sans GB", "Microsoft Yahei", sans-serif, "Apple Logo";
+        }
+    </style>
+    <link rel="stylesheet" type="text/css" media="screen" href="/assets/eff83bb43f1b5b3b0e04c220ea510bee71884adf-combo.css?t=1789357200">
+    
+    <script>
+        const SITE_NIGHT = 0;
+    </script>
+    <link rel="stylesheet" href="/static/css/vendor/tomorrow.css?v=3c006808236080a5d98ba4e64b8f323f" type="text/css">
+    
+    <link rel="icon" sizes="192x192" href="/static/icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon-180.png?v=91e795b8b5d9e2cbf2d886c3d4b7d63c">
+    
+    <link rel="shortcut icon" href="https://cdn.v2ex.com/avatar/9cb0/75f9/89722_large.png?m=1782843787" type="image/png">
+    
+    
+    <link rel="manifest" href="/manifest.webmanifest">
+    <script>
+        const LANG = 'enus';
+        const FEATURES = ['search', 'favorite-nodes-sort'];
+    </script>
+    <script src="/assets/30141b4224c26d638178029e4a0c11d896e2980c-combo.js?t=1789357200" defer></script>
+    <meta name="description" content="pwinner&#39;s profile on V2EX">
+    
+    <link rel="alternate" type="application/atom+xml" href="/feed/member/pwinner.xml">
+    
+    
+    <link rel="canonical" href="https://www.v2ex.com/member/pwinner">
+    
+    
+
+<script>
+	document.addEventListener("DOMContentLoaded", function(event) {
+		protectTraffic();
+
+        tippy('[title]', {
+        placement: 'bottom',
+        arrow: true,
+        arrowTransform: 'translateY(-2px)'
+        });
+
+        
+
+        const topicLinks = document.getElementsByClassName('topic-link');
+const moreLinks = document.getElementsByClassName('count_livid');
+const orangeLinks = document.getElementsByClassName('count_orange');
+// merge non-duplicate arrays
+const links = Array.from(new Set([...topicLinks, ...moreLinks, ...orangeLinks]));
+for (link in links) {
+    let aLink = links[link];
+    if (aLink === undefined) {
+        continue;
+    }
+    if (!aLink.hasAttribute || !aLink.hasAttribute('href')) {
+        continue;
+    }
+    let href = aLink.getAttribute('href');
+    if (href && href.startsWith('/t/')) {
+        // href is something like "/t/1234#reply567"
+        const topicID = href.split('/')[2].split('#')[0];
+        const key = "tp" + topicID;
+        const value = lscache.get(key);
+        if (value) {
+            const anchor = href.split('#')[1];
+            const newHref = "/t/" + topicID + "?p=" + value + "#" + anchor;
+            aLink.setAttribute('href', newHref);
+            console.log("Set p for topic " + topicID + " to " + value + ": " + newHref);
+        }
+    }
+}
+	});
+</script>
+<script type="text/javascript">
+function format(tpl) {
+    var index = 1, items = arguments;
+    return (tpl || '').replace(/{(\w*)}/g, function(match, p1) {
+        return items[index++] || p1 || match;
+    });
+}
+function loadCSS(url, callback) {
+    return $('<link type="text/css" rel="stylesheet"/>')
+        .attr({ href: url })
+        .on('load', callback)
+        .appendTo(document.head);
+}
+function lazyGist(element) {
+    var $btn = $(element);
+    var $self = $(element).parent();
+    var $link = $self.find('a');
+    $btn.prop('disabled', 'disabled').text('Loading...');
+    $.getJSON(format('{}.json?callback=?', $link.prop('href').replace($link.prop('hash'), '')))
+        .done(function(data) {
+            loadCSS(data.stylesheet, function() {
+                $self.replaceWith(data.div);
+                $('.gist .gist-file .gist-meta a').filter(function() { return this.href === $link.prop('href'); }).parents('.gist-file').siblings().remove();
+            });
+        })
+        .fail(function() { $self.replaceWith($('<a>').attr('href', url).text(url)); });
+}
+</script>
+
+<script type="application/ld+json">{"url": "https://www.v2ex.com/member/pwinner", "@type": "ProfilePage", "@context": "https://schema.org", "dateCreated": "2015-01-03T11:55:33Z", "mainEntity": {"name": "pwinner", "url": "https://www.v2ex.com/member/pwinner", "image": "https://cdn.v2ex.com/avatar/9cb0/75f9/89722_large.png?m=1782843787", "sameAs": ["http://geeking.moe"], "identifier": "89722", "@type": "Person"}, "dateModified": "2026-06-30T18:23:07Z"}</script>
+
+
+    
+</head>
+<body>
+    
+
+
+    
+    <div id="Top">
+        <div class="content">
+            <div class="site-nav">
+                <a href="/" name="top" title="way to explore"><div id="Logo"></div></a>
+                <div id="search-container">
+                    <input id="search" type="text" maxlength="128" autocomplete="off" tabindex="1">
+                    <div id="search-result" class="box"></div>
+                </div>
+                <div class="tools" style="font-size: 13px;">
+                
+                    <a href="/" class="top">Home</a>
+                    <a href="/signup" class="top">Sign Up</a>
+                    <a href="/signin" class="top">Sign In</a>
+                
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="Wrapper">
+        <div class="content">
+            
+            <div id="Leftbar"></div>
+            <div id="Rightbar">
+                <div class="sep20"></div>
+                
+
+
+
+
+
+
+<div class="box">
+    <div class="cell"><img src="/static/img/neue_comment.png" width="18" align="absmiddle" /> &nbsp;pwinner's recent timeline updates</div>
+    <div id="statuses">
+        
+    </div>
+</div>
+<div class="sep20"></div>
+
+
+
+
+
+
+            </div>
+            <div id="Main">
+                <div class="sep20"></div>
+                
+<div class="box">
+    <div class="cell">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+            <td width="73" valign="top" align="center"><img src="https://cdn.v2ex.com/avatar/9cb0/75f9/89722_large.png?m=1782843787" class="avatar" border="0" align="default" alt="pwinner" data-uid="89722" /><div class="sep10"></div><strong class="online">ONLINE</strong></td>
+            <td width="10"></td>
+            <td width="auto" valign="top" align="left">
+                <div class="fr">
+                
+                
+                </div>
+                <h1 style="margin-bottom: 5px;">pwinner</h1>
+                
+                <span class="bigger"></span>
+                
+                <div class="sep10"></div>
+                <span class="gray">V2EX member #89722, joined on 2015-01-03 19:55:33 +08:00<div class="sep5"></div>Today's activity rank <a href="/top/dau">1033</a>
+                
+                
+                </span>
+                
+            </td>
+        </tr>
+    </table>
+    <div class="sep5"></div>
+</div>
+    
+    
+    
+    <div class="widgets">
+                
+        <a href="http://geeking.moe" class="social_label" target="_blank" rel="nofollow noopener noreferrer"><img src="/static/img/social_globe.png" style="border-radius: 24px;" width="24" alt="Website" align="absmiddle" /> &nbsp;geeking.moe</a>
+        <a href="http://www.google.com/maps?q=Shanghai" class="social_label" target="_blank" rel="nofollow noopener noreferrer"><img src="/static/img/social_geo.png" width="24" alt="Geo" align="absmiddle" /> &nbsp;Shanghai</a>
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    </div>
+    
+    
+    
+    
+</div>
+<div class="sep20"></div>
+<div class="box">
+    <div class="cell_tabs flex-one-row">
+        <div>
+        <img src="https://cdn.v2ex.com/avatar/9cb0/75f9/89722_normal.png?m=1782843787" width="24" style="border-radius: 24px; margin-top: -2px;" border="0" />
+        </div>
+        <div style="flex: 1;"><a href="/member/pwinner" class="cell_tab_current">pwinner</a><a href="/member/pwinner/qna" class="cell_tab">提问</a><a href="/member/pwinner/tech" class="cell_tab">技术话题</a><a href="/member/pwinner/play" class="cell_tab">好玩</a><a href="/member/pwinner/jobs" class="cell_tab">工作信息</a><a href="/member/pwinner/deals" class="cell_tab">交易信息</a><a href="/member/pwinner/city" class="cell_tab">城市相关</a></div>
+    </div>
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+<div class="cell item" style="">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+            
+            <td width="auto" valign="middle"><span class="item_title"><a href="/t/1241734#reply23" class="topic-link" id="topic-link-1241734">一些关于 openai 订阅降智,账号风控的独立测试</a></span>
+            <div class="sep5"></div>
+            <span class="topic_info"><div class="votes"></div><a class="node" href="/go/openai">OpenAI</a> &nbsp;•&nbsp; <strong><a href="/member/pwinner">pwinner</a></strong> &nbsp;•&nbsp; <span title="2026-09-14 11:39:06 +08:00">2 mins ago</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/pwinner">pwinner</a></strong></span>
+            </td>
+            <td width="70" align="right" valign="middle">
+                
+                <a href="/t/1241734#reply23" class="count_livid">23</a>
+                
+            </td>
+        </tr>
+    </table>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="cell item" style="">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+            
+            <td width="auto" valign="middle"><span class="item_title"><a href="/t/1224069#reply3" class="topic-link" id="topic-link-1224069">Sonnet5 他来了</a></span>
+            <div class="sep5"></div>
+            <span class="topic_info"><div class="votes"><li class="fa fa-chevron-up"></li> &nbsp;2 &nbsp;&nbsp; </div><a class="node" href="/go/claude">Claude</a> &nbsp;•&nbsp; <strong><a href="/member/pwinner">pwinner</a></strong> &nbsp;•&nbsp; <span title="2026-07-01 11:07:31 +08:00">Jul 1</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/pwinner">pwinner</a></strong></span>
+            </td>
+            <td width="70" align="right" valign="middle">
+                
+                <a href="/t/1224069#reply3" class="count_livid">3</a>
+                
+            </td>
+        </tr>
+    </table>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="cell item" style="">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+            
+            <td width="auto" valign="middle"><span class="item_title"><a href="/t/1147193#reply14" class="topic-link" id="topic-link-1147193">记一次 Apple Store 的 M4 max MBP 清灰</a></span>
+            <div class="sep5"></div>
+            <span class="topic_info"><div class="votes"></div><a class="node" href="/go/mbp">MacBook Pro</a> &nbsp;•&nbsp; <strong><a href="/member/pwinner">pwinner</a></strong> &nbsp;•&nbsp; <span title="2025-09-07 20:31:22 +08:00">Sep 7, 2025</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/leozeeho">leozeeho</a></strong></span>
+            </td>
+            <td width="70" align="right" valign="middle">
+                
+                <a href="/t/1147193#reply14" class="count_livid">14</a>
+                
+            </td>
+        </tr>
+    </table>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="cell item" style="">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+            
+            <td width="auto" valign="middle"><span class="item_title"><a href="/t/1114976#reply10" class="topic-link" id="topic-link-1114976">简单记一次 9 天的日本桥(东京)到日本桥(大阪)单人骑游</a></span>
+            <div class="sep5"></div>
+            <span class="topic_info"><div class="votes"><li class="fa fa-chevron-up"></li> &nbsp;1 &nbsp;&nbsp; </div><a class="node" href="/go/travel">旅行</a> &nbsp;•&nbsp; <strong><a href="/member/pwinner">pwinner</a></strong> &nbsp;•&nbsp; <span title="2025-03-01 18:41:17 +08:00">Mar 1, 2025</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/pwinner">pwinner</a></strong></span>
+            </td>
+            <td width="70" align="right" valign="middle">
+                
+                <a href="/t/1114976#reply10" class="count_livid">10</a>
+                
+            </td>
+        </tr>
+    </table>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="cell item" style="">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+            
+            <td width="auto" valign="middle"><span class="item_title"><a href="/t/1097506#reply36" class="topic-link" id="topic-link-1097506">14 寸 M4 Max MBP, 96 瓦原装充电器不够用</a></span>
+            <div class="sep5"></div>
+            <span class="topic_info"><div class="votes"></div><a class="node" href="/go/mbp">MacBook Pro</a> &nbsp;•&nbsp; <strong><a href="/member/pwinner">pwinner</a></strong> &nbsp;•&nbsp; <span title="2024-12-18 15:29:42 +08:00">Dec 18, 2024</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/pwinner">pwinner</a></strong></span>
+            </td>
+            <td width="70" align="right" valign="middle">
+                
+                <a href="/t/1097506#reply36" class="count_livid">36</a>
+                
+            </td>
+        </tr>
+    </table>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="cell item" style="">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+            
+            <td width="auto" valign="middle"><span class="item_title"><a href="/t/1058238#reply45" class="topic-link" id="topic-link-1058238">公网 p2p 已死，已经出现完全伪装正常客户端的恶意刷流者了</a></span>
+            <div class="sep5"></div>
+            <span class="topic_info"><div class="votes"><li class="fa fa-chevron-up"></li> &nbsp;1 &nbsp;&nbsp; </div><a class="node" href="/go/bb">宽带症候群</a> &nbsp;•&nbsp; <strong><a href="/member/pwinner">pwinner</a></strong> &nbsp;•&nbsp; <span title="2024-10-31 15:00:37 +08:00">Oct 31, 2024</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/esxlin">esxlin</a></strong></span>
+            </td>
+            <td width="70" align="right" valign="middle">
+                
+                <a href="/t/1058238#reply45" class="count_livid">45</a>
+                
+            </td>
+        </tr>
+    </table>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="cell item" style="">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+            
+            <td width="auto" valign="middle"><span class="item_title"><a href="/t/629187#reply4" class="topic-link" id="topic-link-629187">迫闲置，出 4 条 8G DDR4 RECC 2133，打包 320 包邮</a></span>
+            <div class="sep5"></div>
+            <span class="topic_info"><div class="votes"></div><a class="node" href="/go/all4all">二手交易</a> &nbsp;•&nbsp; <strong><a href="/member/pwinner">pwinner</a></strong> &nbsp;•&nbsp; <span title="2019-12-15 18:19:34 +08:00">Dec 15, 2019</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/Redblue">Redblue</a></strong></span>
+            </td>
+            <td width="70" align="right" valign="middle">
+                
+                <a href="/t/629187#reply4" class="count_livid">4</a>
+                
+            </td>
+        </tr>
+    </table>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="cell item" style="">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+            
+            <td width="auto" valign="middle"><span class="item_title"><a href="/t/509010#reply10" class="topic-link" id="topic-link-509010">迫双十一，上海地区出戴尔 U2515H，带 ac511 音响棒和校色文件</a></span>
+            <div class="sep5"></div>
+            <span class="topic_info"><div class="votes"></div><a class="node" href="/go/all4all">二手交易</a> &nbsp;•&nbsp; <strong><a href="/member/pwinner">pwinner</a></strong> &nbsp;•&nbsp; <span title="2018-11-19 14:01:36 +08:00">Nov 19, 2018</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/fxly0401">fxly0401</a></strong></span>
+            </td>
+            <td width="70" align="right" valign="middle">
+                
+                <a href="/t/509010#reply10" class="count_livid">10</a>
+                
+            </td>
+        </tr>
+    </table>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="cell item" style="">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+            
+            <td width="auto" valign="middle"><span class="item_title"><a href="/t/489467#reply14" class="topic-link" id="topic-link-489467">迫换了 1080， 1000 出块 gtx980 冰龙版</a></span>
+            <div class="sep5"></div>
+            <span class="topic_info"><div class="votes"></div><a class="node" href="/go/all4all">二手交易</a> &nbsp;•&nbsp; <strong><a href="/member/pwinner">pwinner</a></strong> &nbsp;•&nbsp; <span title="2018-09-16 12:27:03 +08:00">Sep 16, 2018</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/cz000">cz000</a></strong></span>
+            </td>
+            <td width="70" align="right" valign="middle">
+                
+                <a href="/t/489467#reply14" class="count_livid">14</a>
+                
+            </td>
+        </tr>
+    </table>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="cell item" style="">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+            
+            <td width="auto" valign="middle"><span class="item_title"><a href="/t/487176#reply4" class="topic-link" id="topic-link-487176">迫主板损坏， 100 出一个 94352hmb</a></span>
+            <div class="sep5"></div>
+            <span class="topic_info"><div class="votes"></div><a class="node" href="/go/all4all">二手交易</a> &nbsp;•&nbsp; <strong><a href="/member/pwinner">pwinner</a></strong> &nbsp;•&nbsp; <span title="2018-09-08 09:30:50 +08:00">Sep 8, 2018</span> &nbsp;•&nbsp; Lastly replied by <strong><a href="/member/imxieke">imxieke</a></strong></span>
+            </td>
+            <td width="70" align="right" valign="middle">
+                
+                <a href="/t/487176#reply4" class="count_livid">4</a>
+                
+            </td>
+        </tr>
+    </table>
+</div>
+
+
+
+    
+    <div class="inner"><span class="chevron">»</span> <a href="/member/pwinner/topics">More topics by pwinner</a></div>
+    
+    
+</div>
+<div class="sep20"></div>
+<div class="box">
+    <div class="cell"><span class="gray">pwinner's recent replies</span></div>
+    
+    
+    <div class="dock_area">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td style="padding: 10px 15px 8px 15px; font-size: 12px; text-align: left;"><div class="fr"><span class="fade" title="2026-09-14 11:39:06 +08:00">2 mins ago</span> </div><span class="gray">Replied to a topic by <a href="/member/pwinner">pwinner</a> <span class="chevron">›</span> <a href="/go/openai">OpenAI</a> <span class="chevron">›</span> <a href="/t/1241734#reply23">一些关于 openai 订阅降智,账号风控的独立测试</a></span></td>
+            </tr>
+        </table>
+    </div>
+    <div class="inner">
+        <div class="reply_content">@<a href="/member/MiracleKoi">MiracleKoi</a> 刚起床吗?前几次可能是好的,后面就一定坏了</div>
+    </div>
+    
+    
+    
+    <div class="dock_area">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td style="padding: 10px 15px 8px 15px; font-size: 12px; text-align: left;"><div class="fr"><span class="fade" title="2026-09-14 11:35:06 +08:00">6 mins ago</span> </div><span class="gray">Replied to a topic by <a href="/member/pwinner">pwinner</a> <span class="chevron">›</span> <a href="/go/openai">OpenAI</a> <span class="chevron">›</span> <a href="/t/1241734#reply23">一些关于 openai 订阅降智,账号风控的独立测试</a></span></td>
+            </tr>
+        </table>
+    </div>
+    <div class="inner">
+        <div class="reply_content">@<a href="/member/413420">413420</a> 实际上,在极端针对计算性能优化和算法的能力上,sol 比 fable5 要强上不少,可惜我用不到 fable5.1,没法对比,但是两家对数学能力的大幅加强我认为都是不错的信号</div>
+    </div>
+    
+    
+    
+    <div class="dock_area">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td style="padding: 10px 15px 8px 15px; font-size: 12px; text-align: left;"><div class="fr"><span class="fade" title="2026-09-14 11:11:14 +08:00">30 mins ago</span> </div><span class="gray">Replied to a topic by <a href="/member/pwinner">pwinner</a> <span class="chevron">›</span> <a href="/go/openai">OpenAI</a> <span class="chevron">›</span> <a href="/t/1241734#reply23">一些关于 openai 订阅降智,账号风控的独立测试</a></span></td>
+            </tr>
+        </table>
+    </div>
+    <div class="inner">
+        <div class="reply_content">@<a href="/member/111111111111">111111111111</a> 不算准确,不是每天第一次,而是每 X 小时后的第一次是正常的</div>
+    </div>
+    
+    
+    
+    <div class="dock_area">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td style="padding: 10px 15px 8px 15px; font-size: 12px; text-align: left;"><div class="fr"><span class="fade" title="2026-09-14 11:01:49 +08:00">40 mins ago</span> </div><span class="gray">Replied to a topic by <a href="/member/pwinner">pwinner</a> <span class="chevron">›</span> <a href="/go/openai">OpenAI</a> <span class="chevron">›</span> <a href="/t/1241734#reply23">一些关于 openai 订阅降智,账号风控的独立测试</a></span></td>
+            </tr>
+        </table>
+    </div>
+    <div class="inner">
+        <div class="reply_content">@<a href="/member/ncik20">ncik20</a> 我一打开网页版 chatgpt,codex 客户端立刻,下一个请求变成 luna,暂不清楚原因,使用的是 safari</div>
+    </div>
+    
+    
+    
+    <div class="dock_area">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td style="padding: 10px 15px 8px 15px; font-size: 12px; text-align: left;"><div class="fr"><span class="fade" title="2026-09-14 10:52:12 +08:00">49 mins ago</span> </div><span class="gray">Replied to a topic by <a href="/member/pwinner">pwinner</a> <span class="chevron">›</span> <a href="/go/openai">OpenAI</a> <span class="chevron">›</span> <a href="/t/1241734#reply23">一些关于 openai 订阅降智,账号风控的独立测试</a></span></td>
+            </tr>
+        </table>
+    </div>
+    <div class="inner">
+        <div class="reply_content">@<a href="/member/413420">413420</a> 被封过 20x,不敢继续用了,怕是已经被打上标记了</div>
+    </div>
+    
+    
+    
+    <div class="dock_area">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td style="padding: 10px 15px 8px 15px; font-size: 12px; text-align: left;"><div class="fr"><span class="fade" title="2026-09-14 10:48:01 +08:00">53 mins ago</span> </div><span class="gray">Replied to a topic by <a href="/member/pwinner">pwinner</a> <span class="chevron">›</span> <a href="/go/openai">OpenAI</a> <span class="chevron">›</span> <a href="/t/1241734#reply23">一些关于 openai 订阅降智,账号风控的独立测试</a></span></td>
+            </tr>
+        </table>
+    </div>
+    <div class="inner">
+        <div class="reply_content">@<a href="/member/layxy">layxy</a> 这基本就是路由 luna 了,还收你 astra 的钱</div>
+    </div>
+    
+    
+    
+    <div class="dock_area">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td style="padding: 10px 15px 8px 15px; font-size: 12px; text-align: left;"><div class="fr"><span class="fade" title="2026-07-01 11:07:31 +08:00">Jul 1</span> </div><span class="gray">Replied to a topic by <a href="/member/pwinner">pwinner</a> <span class="chevron">›</span> <a href="/go/claude">Claude</a> <span class="chevron">›</span> <a href="/t/1224069#reply3">Sonnet5 他来了</a></span></td>
+            </tr>
+        </table>
+    </div>
+    <div class="inner">
+        <div class="reply_content">@<a href="/member/ethanchen22">ethanchen22</a> 一直是一起的,只是听说 fable 是单独额度</div>
+    </div>
+    
+    
+    
+    
+    
+    <div class="dock_area">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td style="padding: 10px 15px 8px 15px; font-size: 12px; text-align: left;"><div class="fr"><span class="fade" title="2026-06-30 22:01:27 +08:00">Jun 30</span> </div><span class="gray">Replied to a topic by <a href="/member/eventlooped">eventlooped</a> <span class="chevron">›</span> <a href="/go/claude">Claude</a> <span class="chevron">›</span> <a href="/t/1224022#reply116">还没有被 A\ 封号的小伙伴是啥配置啊</a></span></td>
+            </tr>
+        </table>
+    </div>
+    <div class="inner">
+        <div class="reply_content">之前用 claude 服务都是系统日语+系统日本时区+指纹浏览器, 要是有什么办法可以 mock 或者把所有他能获取到某些关键信息的系统 api 给替换掉我也不用费那么大周折</div>
+    </div>
+    
+    
+    
+    <div class="dock_area">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+                <td style="padding: 10px 15px 8px 15px; font-size: 12px; text-align: left;"><div class="fr"><span class="fade" title="2026-06-23 23:46:02 +08:00">Jun 23</span> </div><span class="gray">Replied to a topic by <a href="/member/lei2015">lei2015</a> <span class="chevron">›</span> <a href="/go/qna">问与答</a> <span class="chevron">›</span> <a href="/t/1222383#reply11">付费寻求关闭道德约束的 ai</a></span></td>
+            </tr>
+        </table>
+    </div>
+    <div class="cell">
+        <div class="reply_content">grok</div>
+    </div>
+    
+    
+    
+    <div class="inner"><span class="chevron">»</span> <a href="/member/pwinner/replies">More replies by pwinner</a></div>
+    
+</div>
+
+            </div>
+            
+            
+        </div>
+        <div class="c"></div>
+        <div class="sep20"></div>
+    </div>
+    <div id="Bottom">
+        <div class="content">
+            <div class="inner">
+                <div class="sep10"></div>
+                    <div class="fr">
+                        <a href="https://www.digitalocean.com/?refcode=1b51f1a7651d" target="_blank"><div id="DigitalOcean"></div></a>
+                    </div>
+                    <strong><a href="/about" class="dark" target="_self">About</a> &nbsp; <span class="snow">·</span> &nbsp; <a href="https://edge.v2ex.com/help" class="dark" target="_self">Help</a> &nbsp; <span class="snow">·</span> &nbsp; <a href="/pro/about" class="dark" target="_self">Advertise</a> &nbsp; <span class="snow">·</span> &nbsp; <a href="https://blog.v2ex.com/" class="dark" target="_blank">Blog</a> &nbsp; <span class="snow">·</span> &nbsp; <a href="https://edge.v2ex.com/help/api" class="dark" target="_self">API</a> &nbsp; <span class="snow">·</span> &nbsp; <a href="/faq" class="dark" target="_self">FAQ</a> &nbsp; <span class="snow">·</span> &nbsp; <a href="/privacy" class="dark" target="_self">Privacy</a> &nbsp; <span class="snow">·</span> &nbsp; <a href="https://edge.v2ex.com/solana" class="dark" target="_self">Solana</a> &nbsp; <span class="snow">·</span> &nbsp; 5710 Online</strong> &nbsp; <span class="fade">Highest 6679</span> &nbsp; <span class="snow">·</span> &nbsp; <a href="/select/language" class="f11"><img src="/static/img/language.png?v=6a5cfa731dc71a3769f6daace6784739" width="16" align="absmiddle" id="ico-select-language" /> &nbsp; Select Language</a>
+                    <div class="sep20"></div>
+                    创意工作者们的社区
+                    <div class="sep5"></div>
+                    World is powered by solitude
+                    <div class="sep20"></div>
+                    <span class="small fade">VERSION: 3.9.8.5 · 26ms · <a href="/worldclock#utc">UTC 03:41</a> · <a href="/worldclock#pvg">PVG 11:41</a> · <a href="/worldclock#lax">LAX 20:41</a> · <a href="/worldclock#jfk">JFK 23:41</a><br />♥ Do have faith in what you're doing.</span>
+                <div class="sep10"></div>
+            </div>
+        </div>
+    </div>
+
+    
+
+    
+
+    
+    <script src="/b/i/hux-fJNyk5_SfgQw-laccUUSdTzytWdZ2jHhFDUxtqUw8Rt4nYamZH9kk1Ij65YC6SueytcX84jniB3IyYC1LH0gM5kAhq9NcsE-bVsbccqfhyLCI0pZCF-QsBDbkfTLBWWypnYJ48hB45MGVfQg5LASq5qWE40Joj_LoUAgrWs="></script>
+    
+
+    
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-11940834-2', 'v2ex.com');
+      ga('send', 'pageview');
+      
+ga('send', 'event', 'Member', 'profile', 'pwinner');
+
+
+    </script>
+    
+
+    
+<button class="scroll-top" data-scroll="up" type="button"><span>❯<span></button>
+</body>
+</html>

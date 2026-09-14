@@ -32,13 +32,38 @@
 
   /* ============================== 配置（想改外观改这里） ============================== */
 
-  const CONFIG = {
+  /* ============================== 设置 ==============================
+   *
+   * 默认值全在 DEFAULTS 里；用户改过的项统一存成一个 JSON
+   * （localStorage 的 v2cx:settings），读走 cfg()、写走 setCfg()。
+   *
+   * 早期版本是「一个设置一个独立的 localStorage 键」（v2cx:theme / v2cx:railW …），
+   * 这里做一次性迁移，老用户不会丢设置。
+   * ============================================================== */
+
+  const DEFAULTS = {
+    /* —— 外观 —— */
+    /** "auto" 跟随 V2EX 自己的主题 | "dark" | "light" */
+    theme: "auto",
+    /** 左 rail 宽度（Codex 原版约 20% 窗宽，306 是按截图校准的） */
+    railWidth: 306,
+    /** 右侧代码面板宽度 */
+    panelWidth: 460,
+    /** 正文最大宽度 */
+    threadMaxWidth: 760,
+    /** 是否显示右侧代码面板（纯氛围装饰） */
+    codePanel: true,
+    /** 代码面板语言：rust / python / typescript / go / java */
+    lang: "rust",
+    /** 代码面板视图："code" | "diff" */
+    codeMode: "code",
+
+    /* —— 伪装 —— */
     /**
-     * 伪装模式（默认开）。上班摸鱼用：
-     *   - 左栏品牌名 → "Codex"
+     * 伪装模式。上班摸鱼用：
+     *   - 左栏品牌名 → "Codex"（brandName 留空时）
      *   - 标签页标题 → 源码文件名（不再出现 "V2EX" / "主题" 字样）
-     *   - 启用应急伪装键（见 stealthKey）
-     * 想让它看起来就是个普通的 V2EX 皮肤，改成 false。
+     *   - 启用应急伪装键
      */
     stealth: true,
     /**
@@ -49,28 +74,126 @@
      * 无论配成什么，Ctrl+Shift+H 始终有效。
      */
     stealthKey: "esc2",
-    /** 左栏品牌名；null = 由 stealth 决定（Codex / V2EX） */
-    brandName: null,
-    /** favicon： "codex" = Codex 风格圆角图标；"site" = 保留 V2EX 原图标 */
-    favicon: "codex",
-    /** 左 rail 宽度（Codex 原版约 20% 窗宽，306 是按截图校准的值） */
-    railWidth: 306,
-    /** 右侧代码面板（纯氛围装饰） */
-    codePanel: true,
+    /** 左栏品牌名。空字符串 = 由 stealth 决定（Codex / V2EX） */
+    brandName: "",
     /**
      * 代码面板 / 面包屑 / 标签页标题里显示的项目名。
      * 默认取一个不含站点痕迹的通用名：标签页标题会变成
      * "topic_cache.rs — platform"，扫一眼就是普通工程目录。
      */
     projectName: "platform",
-    /** 正文最大宽度 */
-    threadMaxWidth: 760,
-    /** 正文图片默认缩略到多大（鼠标悬停会浮出大图预览） */
+    /** favicon："codex" = Codex 风格圆角图标 | "site" = 保留 V2EX 原图标 */
+    favicon: "codex",
+
+    /* —— agent 装饰（内容全是假的，纯装饰）—— */
+    /** 总开关：思考块 + 工具调用行 */
+    decorations: true,
+    /** 列表里穿插痕迹的比例（%）。0 = 列表里不插 */
+    listTraceRate: 46,
+    /** 列表里的思考块是否默认展开（关掉只占一行 ✻ Worked for Ns ▸） */
+    listThinkingOpen: false,
+    /** 详情页的思考块是否默认展开 */
+    detailThinkingOpen: true,
+
+    /* —— 正文图片 —— */
+    /** 缩略图尺寸上限 */
     thumbWidth: 260,
     thumbHeight: 170,
-    /** "auto" | "dark" | "light" */
-    theme: "auto"
+    /** 鼠标悬停时浮出大图预览 */
+    thumbPreview: true
   };
+
+  const SETTINGS_KEY = "v2cx:settings";
+  /** 旧版本用过的独立键 → 新设置的字段名 */
+  const LEGACY_KEYS = {
+    theme: "v2cx:theme",
+    railWidth: "v2cx:railW",
+    panelWidth: "v2cx:panelW",
+    codePanel: "v2cx:panelHidden",
+    lang: "v2cx:lang",
+    codeMode: "v2cx:mode"
+  };
+
+  let SETTINGS = null;
+
+  function loadSettings() {
+    const out = Object.assign({}, DEFAULTS);
+    // 1) 先吃旧键（迁移）
+    for (const k of Object.keys(LEGACY_KEYS)) {
+      const v = lsGet(LEGACY_KEYS[k], null);
+      if (v === null || v === "") continue;
+      if (k === "codePanel") out.codePanel = String(v) !== "1";
+      else if (k === "railWidth" || k === "panelWidth") {
+        const n = Number(v);
+        if (Number.isFinite(n) && n > 0) out[k] = n;
+      } else out[k] = v;
+    }
+    // 2) 再吃新键，覆盖旧键
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) {
+        const obj = JSON.parse(raw);
+        for (const k of Object.keys(DEFAULTS)) {
+          // 类型不符就忽略，避免手工改坏 localStorage 后整个面板崩掉
+          if (obj[k] !== undefined && typeof obj[k] === typeof DEFAULTS[k]) out[k] = obj[k];
+        }
+      }
+    } catch { /* 坏了就用默认值 */ }
+    return out;
+  }
+
+  function cfg(key) {
+    if (!SETTINGS) SETTINGS = loadSettings();
+    return SETTINGS[key] !== undefined ? SETTINGS[key] : DEFAULTS[key];
+  }
+
+  /** 写设置。visualOnly = 只刷新 CSS 变量，不重渲染（拖滑块时用） */
+  function setCfg(key, value, opts) {
+    if (!SETTINGS) SETTINGS = loadSettings();
+    SETTINGS[key] = value;
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(SETTINGS)); } catch { /* 隐私模式等 */ }
+    if (opts && opts.visualOnly) applyVisualSettings();
+    else applySettings();
+  }
+
+  function resetSettings() {
+    SETTINGS = Object.assign({}, DEFAULTS);
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(SETTINGS));
+      for (const k of Object.keys(LEGACY_KEYS)) localStorage.removeItem(LEGACY_KEYS[k]);
+    } catch { /* ignore */ }
+    applySettings();
+  }
+
+  function brandName() {
+    const custom = cfg("brandName");
+    return custom || (cfg("stealth") ? "Codex" : "V2EX");
+  }
+
+  /**
+   * 只改 CSS 变量 / class —— 不重渲染。
+   * 拖宽度滑块时走这条，否则每动一格都重排整个列表会很卡。
+   */
+  function applyVisualSettings() {
+    const root = document.documentElement;
+    root.style.setProperty("--cx-rail-w", cfg("railWidth") + "px");
+    root.style.setProperty("--v2cx-panel-w", cfg("panelWidth") + "px");
+    root.style.setProperty("--v2cx-thread-max", cfg("threadMaxWidth") + "px");
+    root.style.setProperty("--v2cx-thumb-w", cfg("thumbWidth") + "px");
+    root.style.setProperty("--v2cx-thumb-h", cfg("thumbHeight") + "px");
+    syncMode();
+    applyFavicon();
+    syncTitle();
+    setPanelHidden(!cfg("codePanel"), false);
+  }
+
+  /** 完整的应用：视觉 + 重渲染 rail / 列表 / 详情 / 代码面板 */
+  function applySettings() {
+    applyVisualSettings();
+    renderCodePanel();
+    render();
+    if (bossOn()) renderBoss();
+  }
 
   /* ============================== 常量 ============================== */
 
@@ -79,21 +202,11 @@
   const ROOT_CLASS = "v2cx";            // <html> 上的激活标记
   const LIGHT_CLASS = "v2cx-light";     // 浅色模式
   const LOCK_CLASS = "v2cx-locked";     // 隐藏原生页面
-  function brandName() {
-    return CONFIG.brandName || (CONFIG.stealth ? "Codex" : "V2EX");
-  }
 
-  const RAIL_W = CONFIG.railWidth;
-  const PANEL_DEFAULT_W = 460; // 代码面板默认宽度（双击把手可重置回这个值）
+  // 「默认宽度」——双击拖拽把手是重置回这两个值，不是重置回当前设置
+  const RAIL_W = DEFAULTS.railWidth;
+  const PANEL_DEFAULT_W = DEFAULTS.panelWidth;
 
-  const LS = {
-    theme: "v2cx:theme",
-    railW: "v2cx:railW",
-    panelW: "v2cx:panelW",
-    panelHidden: "v2cx:panelHidden",
-    lang: "v2cx:lang",
-    mode: "v2cx:mode"
-  };
 
   /* ============================== 内联 SVG 图标 ============================== */
 
@@ -150,7 +263,7 @@
   let faviconModeCache = null;
 
   function makeFaviconUri() {
-    if (CONFIG.favicon === "site") return null;
+    if (cfg("favicon") === "site") return null;
     const light = !isDarkMode();
     const mode = light ? "light" : "dark";
     if (faviconUriCache && faviconModeCache === mode) return faviconUriCache;
@@ -2083,6 +2196,181 @@
     @keyframes v2cx-blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
     @media (prefers-reduced-motion: reduce) { .v2cx-boss-caret { animation: none; } }
 
+    /* ================= 设置面板 ================= */
+    .v2cx-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      font-family: var(--cx-font-ui);
+    }
+    .v2cx-modal[hidden] { display: none; }
+
+    .v2cx-modal-card {
+      width: 100%;
+      max-width: 640px;
+      max-height: min(86vh, 820px);
+      display: flex;
+      flex-direction: column;
+      background: var(--cx-bg-raised);
+      color: var(--cx-text);
+      border: 1px solid var(--cx-border-strong);
+      border-radius: 14px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+    }
+    .v2cx-modal-head {
+      flex: none;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 15px 18px 13px;
+      border-bottom: 1px solid var(--cx-border-soft);
+    }
+    .v2cx-modal-title { font-size: 15px; font-weight: 600; }
+    .v2cx-modal-sub { font-size: 11.5px; color: var(--cx-text-faint); }
+    .v2cx-modal-x {
+      margin-left: auto;
+      align-self: center;
+      width: 26px; height: 26px;
+      border: none; background: none;
+      border-radius: 6px;
+      color: var(--cx-text-dim);
+      font-size: 18px; line-height: 1;
+      cursor: pointer;
+      display: grid; place-items: center;
+    }
+    .v2cx-modal-x:hover { background: var(--cx-btn-hover); color: var(--cx-text); }
+
+    .v2cx-modal-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 4px 18px 14px;
+      scrollbar-width: thin;
+    }
+    .v2cx-modal-body::-webkit-scrollbar { width: 8px; }
+    .v2cx-modal-body::-webkit-scrollbar-thumb { background: var(--cx-scroll-thumb); border-radius: 4px; }
+
+    .v2cx-set-section {
+      margin: 18px 0 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: var(--cx-text-faint);
+    }
+    .v2cx-set-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--cx-border-soft);
+    }
+    .v2cx-set-row:last-child { border-bottom: none; }
+    .v2cx-set-label { flex: 1; min-width: 0; font-size: 13px; }
+    .v2cx-set-hint {
+      margin-top: 3px;
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: var(--cx-text-faint);
+    }
+    .v2cx-set-ctrl {
+      flex: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 132px;
+      justify-content: flex-end;
+    }
+    .v2cx-set-val {
+      min-width: 46px;
+      text-align: right;
+      font-size: 12px;
+      color: var(--cx-text-dim);
+      font-variant-numeric: tabular-nums;
+      font-family: var(--cx-font-mono);
+    }
+
+    /* 开关 */
+    .v2cx-switch {
+      width: 38px; height: 22px;
+      flex: none;
+      border-radius: 999px;
+      border: 1px solid var(--cx-border-strong);
+      background: var(--cx-bg-inset);
+      cursor: pointer;
+      padding: 0;
+      position: relative;
+      transition: background 0.14s, border-color 0.14s;
+    }
+    .v2cx-switch > span {
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--cx-text-dim);
+      transition: transform 0.14s, background 0.14s;
+    }
+    .v2cx-switch.on { background: var(--cx-blue-soft); border-color: var(--cx-blue); }
+    .v2cx-switch.on > span { transform: translateX(16px); background: var(--cx-blue); }
+    .v2cx-switch:focus-visible { outline: 2px solid var(--cx-blue); outline-offset: 2px; }
+
+    /* 滑块 */
+    .v2cx-range {
+      flex: 1;
+      min-width: 110px;
+      max-width: 190px;
+      height: 22px;
+      accent-color: var(--cx-blue);
+      cursor: pointer;
+    }
+    /* 下拉 / 输入框 */
+    .v2cx-select,
+    .v2cx-text {
+      font-family: var(--cx-font-ui);
+      font-size: 12.5px;
+      color: var(--cx-text);
+      background: var(--cx-bg-inset);
+      border: 1px solid var(--cx-border);
+      border-radius: 7px;
+      padding: 5px 8px;
+      outline: none;
+      min-width: 0;
+    }
+    .v2cx-select { max-width: 200px; }
+    .v2cx-text { width: 160px; }
+    .v2cx-text::placeholder { color: var(--cx-text-faint); }
+    .v2cx-select:focus,
+    .v2cx-text:focus { border-color: var(--cx-blue); }
+
+    .v2cx-modal-foot {
+      flex: none;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 18px;
+      border-top: 1px solid var(--cx-border-soft);
+      font-size: 11.5px;
+      color: var(--cx-text-faint);
+    }
+    .v2cx-modal-btn {
+      font-family: var(--cx-font-ui);
+      font-size: 12.5px;
+      color: var(--cx-text);
+      background: var(--cx-chip-bg);
+      border: 1px solid var(--cx-border-strong);
+      border-radius: 999px;
+      padding: 5px 14px;
+      cursor: pointer;
+    }
+    .v2cx-modal-btn:hover { background: var(--cx-btn-hover); }
+
     /* ================= toast ================= */
     .v2cx-toast {
       position: fixed;
@@ -2190,9 +2478,9 @@
   /* ============================== 明暗模式 ============================== */
 
   function themeOverride() {
-    if (CONFIG.theme === "light" || CONFIG.theme === "dark") return CONFIG.theme;
-    const v = lsGet(LS.theme, "");
-    return (v === "light" || v === "dark") ? v : null;
+    if (cfg("theme") === "light" || cfg("theme") === "dark") return cfg("theme");
+    const t = cfg("theme");
+    return (t === "light" || t === "dark") ? t : null;
   }
 
   /**
@@ -2519,7 +2807,7 @@
       renderRail(rail, page);
     });
     rail.querySelector("[data-mode-toggle]")?.addEventListener("click", () => {
-      lsSet(LS.theme, isDarkMode() ? "light" : "dark");
+      setCfg("theme", isDarkMode() ? "light" : "dark", { visualOnly: true });
       syncMode();
       applyFavicon();
       syncModeBtn();
@@ -2570,6 +2858,7 @@
             <span class="v2cx-model"></span>
           </div>
           <div class="v2cx-spacer"></div>
+          <div class="v2cx-icon-btn" data-settings-open title="设置（Ctrl+,）">${ic("gear")}</div>
           <div class="v2cx-icon-btn v2cx-panel-toggle" data-panel-toggle title="显示 / 隐藏代码面板">${ic("panel")}</div>
           <a class="v2cx-icon-btn" href="${escapeHtml(location.href)}" target="_blank" rel="noopener" title="在原生界面打开">${ic("external")}</a>
           <div class="v2cx-icon-btn" title="复制当前链接" data-copy-link>${ic("dots")}</div>
@@ -2645,7 +2934,7 @@
       if (vt) {
         main.querySelectorAll("[data-code-view-toggle] span").forEach((x) =>
           x.classList.toggle("on", x === vt));
-        lsSet(LS.mode, vt.dataset.v || "code");
+        setCfg("codeMode", vt.dataset.v || "code", { visualOnly: true });
         renderCodePanel();
         return;
       }
@@ -2655,7 +2944,7 @@
       }
       const li = t.closest("[data-code-lang-item]");
       if (li) {
-        lsSet(LS.lang, li.dataset.codeLangItem);
+        setCfg("lang", li.dataset.codeLangItem, { visualOnly: true });
         main.querySelector("[data-lang-menu]")?.classList.remove("on");
         renderCodePanel();
         return;
@@ -2840,14 +3129,20 @@
    * 太密会盖住标题，反而更奇怪。
    */
   function listTraceHtml(t, idx, avoidRun) {
+    const sep = { html: '<div class="v2cx-row-sep"></div>', run: avoidRun };
+    if (!cfg("decorations")) return sep;
+    const rate = Math.max(0, Math.min(100, Number(cfg("listTraceRate")) || 0));
+    if (rate <= 0) return sep;
+
     const rnd = mulberry32((((idx + 1) * 2654435761) ^ Number(t.id || 0)) >>> 0);
-    const roll = rnd();
-    if (roll < 0.24) return { html: thinkingHtml(rnd, true), run: avoidRun }; // 默认展开，点标题收起
-    if (roll < 0.50) {
-      const r = runlineParts(rnd, avoidRun);
-      return { html: r.html, run: r.idx };
+    const roll = rnd() * 100;
+    if (roll >= rate) return sep;
+    // 半数位置放思考块，半数放工具调用行
+    if (roll < rate / 2) {
+      return { html: thinkingHtml(rnd, !!cfg("listThinkingOpen")), run: avoidRun };
     }
-    return { html: '<div class="v2cx-row-sep"></div>', run: avoidRun };
+    const r = runlineParts(rnd, avoidRun);
+    return { html: r.html, run: r.idx };
   }
 
   /** 把行和痕迹穿插成一段 HTML */
@@ -3089,8 +3384,8 @@
 
   /**
    * ✻ Worked for 27s —— 可折叠的思考块（HTML 字符串）。
-   * 列表页和详情页都默认展开（对齐参考图 2.png 的观感），
-   * 点标题行收起 / 再点展开。
+   * 默认展开与否由调用方传（列表看 listThinkingOpen，详情看 detailThinkingOpen），
+   * 两种状态都可以点标题行切换。
    */
   function thinkingHtml(rnd, openByDefault) {
     const secs = 2 + Math.floor(rnd() * 46);
@@ -3129,7 +3424,7 @@
    * 覆盖率对齐参考实现：~70% 楼层带思考块，~28% 额外掺工具调用行。
    */
   function decorateTurns(container, topicId) {
-    if (!container) return;
+    if (!container || !cfg("decorations")) return;
     container.querySelectorAll(".v2cx-turn-agent[data-floor]").forEach((turn) => {
       if (turn.dataset.decorated === "1") return;
       turn.dataset.decorated = "1";
@@ -3139,7 +3434,7 @@
       // 思考块放内容最前面（要放在 runline 判断之前，否则覆盖率会掉）
       if (rnd() < 0.70) {
         const holder = el("div");
-        holder.innerHTML = thinkingHtml(rnd, true);
+        holder.innerHTML = thinkingHtml(rnd, !!cfg("detailThinkingOpen"));
         cooked.prepend(holder.firstChild);
       }
       if (cooked.children.length < 2) return;
@@ -3418,7 +3713,7 @@
   const CODE_LANGS = {
     rust: {
       label: "Rust", file: "topic_cache.rs", dir: "engine", icon: "RS", comment: "//",
-      root: CONFIG.projectName,
+      root: cfg("projectName"),
       kw: ["fn", "let", "mut", "impl", "pub", "use", "struct", "enum", "match", "if", "else", "for", "in", "return", "mod", "crate", "self", "Self", "async", "await", "move", "where", "const", "trait", "loop", "while", "Ok", "Err", "Some", "None", "Box", "Vec", "String", "Result", "Option"],
       blocks: [
         ["use std::collections::HashMap;", "use std::time::{Duration, Instant};", ""],
@@ -3435,7 +3730,7 @@
     },
     python: {
       label: "Python", file: "crawler.py", dir: "workers", icon: "PY", comment: "#",
-      root: CONFIG.projectName,
+      root: cfg("projectName"),
       kw: ["def", "class", "return", "if", "else", "elif", "for", "while", "in", "import", "from", "as", "with", "try", "except", "finally", "raise", "lambda", "None", "True", "False", "async", "await", "yield", "pass", "self", "is", "not", "and", "or"],
       blocks: [
         ["import asyncio", "import hashlib", "from dataclasses import dataclass, field", "from typing import Optional", ""],
@@ -3451,7 +3746,7 @@
     },
     typescript: {
       label: "TypeScript", file: "app.ts", dir: "web", icon: "TS", comment: "//",
-      root: CONFIG.projectName,
+      root: cfg("projectName"),
       kw: ["const", "let", "var", "function", "return", "if", "else", "for", "of", "in", "while", "import", "from", "export", "default", "class", "extends", "interface", "type", "enum", "new", "this", "async", "await", "try", "catch", "finally", "throw", "switch", "case", "break", "readonly", "public", "private", "void", "string", "number", "boolean", "Promise", "Map", "Set"],
       blocks: [
         ['import { EventEmitter } from "events";', 'import type { Topic, Reply, NodeInfo } from "./types";', ""],
@@ -3468,7 +3763,7 @@
     },
     go: {
       label: "Go", file: "main.go", dir: "cmd", icon: "GO", comment: "//",
-      root: CONFIG.projectName,
+      root: cfg("projectName"),
       kw: ["func", "package", "import", "return", "if", "else", "for", "range", "go", "chan", "select", "case", "default", "type", "struct", "interface", "map", "var", "const", "defer", "nil", "err", "string", "int", "bool", "error", "true", "false"],
       blocks: [
         ["package main", "", "import (", '    "context"', '    "fmt"', '    "sync"', '    "time"', ")", ""],
@@ -3482,7 +3777,7 @@
     },
     java: {
       label: "Java", file: "TopicService.java", dir: "src/main/java", icon: "JV", comment: "//",
-      root: CONFIG.projectName,
+      root: cfg("projectName"),
       kw: ["public", "private", "protected", "class", "interface", "enum", "static", "final", "void", "return", "if", "else", "for", "while", "new", "this", "import", "package", "extends", "implements", "try", "catch", "finally", "throw", "throws", "int", "long", "boolean", "String", "List", "Map", "Optional", "var"],
       blocks: [
         ["package com.example.v2ex;", "", "import java.time.Duration;", "import java.util.Map;", "import java.util.Optional;", "import java.util.concurrent.ConcurrentHashMap;", ""],
@@ -3526,25 +3821,27 @@
   }
 
   function getLang() {
-    const v = lsGet(LS.lang, "rust");
+    const v = cfg("lang");
     return CODE_LANGS[v] ? v : "rust";
   }
 
   function getCodeMode() {
-    const v = lsGet(LS.mode, "code");
-    return v === "diff" ? "diff" : "code";
+    return cfg("codeMode") === "diff" ? "diff" : "code";
   }
 
   function panelHidden() {
-    if (!CONFIG.codePanel) return true;
-    return lsGet(LS.panelHidden, "0") === "1";
+    return !cfg("codePanel");
   }
 
   function setPanelHidden(hidden, persist) {
     const main = document.querySelector(".v2cx-main");
     if (!main) return;
     main.classList.toggle("panel-hidden", hidden);
-    if (persist) lsSet(LS.panelHidden, hidden ? "1" : "0");
+    if (persist) {
+      // 顶栏那个按钮和设置面板里的开关是同一件事，改完要把面板里的状态同步过去
+      setCfg("codePanel", !hidden, { visualOnly: true });
+      syncSettingControls();
+    }
   }
 
   /** 面板种子：详情 = 话题 id；列表 = 路径字符串哈希 */
@@ -4059,12 +4356,13 @@
 
   /* ============================== 三栏拖拽调宽 ============================== */
 
-  function storedWidth(key, def, min, max) {
-    const raw = num(lsGet(key, ""));
-    const w = raw || def;
-    return Math.min(max, Math.max(min, w));
-  }
-
+  /**
+   * 两个拖拽把手：rail 右缘、代码面板左缘。
+   *
+   * 宽度在这里是「直接改 CSS 变量」而不是走 setCfg()，因为 mousemove 频率很高，
+   * 每次都序列化写 localStorage 没必要；松手时才落到设置里。
+   * 双击 = 重置回 DEFAULTS 里的默认宽度（不是回到当前设置值）。
+   */
   function bindResizers(main) {
     document.querySelectorAll(".v2cx-resizer").forEach((rz) => {
       if (rz.dataset.bound === "1") return;
@@ -4082,11 +4380,11 @@
         }
       };
 
-      // 双击重置（面板 / rail 各回到默认宽度）
+      // 双击重置
       rz.addEventListener("dblclick", () => {
         const def = isRail ? RAIL_W : PANEL_DEFAULT_W;
         apply(def);
-        lsSet(isRail ? LS.railW : LS.panelW, String(def));
+        setCfg(isRail ? "railWidth" : "panelWidth", def, { visualOnly: true });
         toastNow(isRail ? "侧栏宽度已重置" : "面板宽度已重置");
       });
 
@@ -4106,7 +4404,7 @@
           if (isRail) {
             apply(Math.round(Math.min(520, Math.max(200, startRail + dx))));
           } else {
-            // 面板宽度 = 起始宽度 - 鼠标位移（把手在面板左缘，往左拖 → 变宽）
+            // 把手在面板左缘，往左拖 → 面板变宽
             apply(Math.round(Math.min(window.innerWidth - 520, Math.max(240, startPanel - dx))));
           }
         };
@@ -4116,29 +4414,21 @@
           document.body.style.userSelect = "";
           window.removeEventListener("mousemove", move);
           window.removeEventListener("mouseup", up);
+          // 松手才持久化
           if (isRail) {
             const w = rail ? Math.round(rail.getBoundingClientRect().width) : RAIL_W;
-            lsSet(LS.railW, String(w));
+            setCfg("railWidth", w, { visualOnly: true });
+            syncSettingControls();
           } else {
             const el2 = (main || document).querySelector(".v2cx-code-panel");
             const w = Math.round(el2 ? el2.getBoundingClientRect().width : 0);
-            if (w) lsSet(LS.panelW, String(w));
+            if (w) { setCfg("panelWidth", w, { visualOnly: true }); syncSettingControls(); }
           }
         };
         window.addEventListener("mousemove", move);
         window.addEventListener("mouseup", up);
       });
     });
-  }
-
-  function restoreWidths() {
-    const railW = storedWidth(LS.railW, RAIL_W, 200, 520);
-    document.documentElement.style.setProperty("--cx-rail-w", railW + "px");
-    const panelW = storedWidth(LS.panelW, PANEL_DEFAULT_W, 240, 1200);
-    document.documentElement.style.setProperty("--v2cx-panel-w", panelW + "px");
-    document.documentElement.style.setProperty("--v2cx-thread-max", CONFIG.threadMaxWidth + "px");
-    document.documentElement.style.setProperty("--v2cx-thumb-w", CONFIG.thumbWidth + "px");
-    document.documentElement.style.setProperty("--v2cx-thumb-h", CONFIG.thumbHeight + "px");
   }
 
   /* ============================== 图片灯箱 ============================== */
@@ -4250,6 +4540,7 @@
   }
 
   function showImgPreview(img) {
+    if (!cfg("thumbPreview")) return;
     if (imgPreviewTarget === img && imgPreviewEl && imgPreviewEl.classList.contains("on")) return;
     const url = fullImageUrl(img);
     if (!url) return;
@@ -4341,7 +4632,7 @@
 
   /** 标签页标题 → "<文件名> — <项目名>"，和代码面板/伪装视图保持一致 */
   function syncTitle() {
-    if (!CONFIG.stealth) return;
+    if (!cfg("stealth")) return;
     const L = CODE_LANGS[getLang()];
     const want = L.file + " \u2014 " + L.root;
     if (document.title !== want) document.title = want;
@@ -4443,7 +4734,7 @@
 
   /** 切换应急伪装视图。注意：只切外观，不卸载任何真实 DOM，恢复时无损失 */
   function setBoss(on) {
-    if (!CONFIG.stealth) return;
+    if (!cfg("stealth")) return;
     const box = ensureBoss();
     if (on) {
       // 切进去之前把输入焦点交出去，避免 composer 还在吃按键
@@ -4471,11 +4762,27 @@
 
   let lastEscAt = 0;
 
+  function bindSettingsKeys() {
+    window.addEventListener("keydown", (e) => {
+      // Ctrl/⌘ + , —— 和 VS Code / macOS 的「偏好设置」一致
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === ",") {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleSettings();
+      }
+    }, true);
+  }
+
   function bindStealthKeys() {
-    if (!CONFIG.stealth) return;
-    const spec = String(CONFIG.stealthKey || "esc2").toLowerCase();
+    const spec = String(cfg("stealthKey") || "esc2").toLowerCase();
 
     window.addEventListener("keydown", (e) => {
+      // 设置面板开着时 Esc 先关面板（别再触发应急伪装）
+      if (e.key === "Escape" && settingsOpen()) {
+        e.preventDefault();
+        closeSettings();
+        return;
+      }
       if (spec === "esc2" && e.key === "Escape") {
         // 灯箱开着时 Esc 属于灯箱（Esc 要能关灯箱）
         if (lightboxOpen) return;
@@ -4498,6 +4805,252 @@
         setBoss(!bossOn());
       }
     }, true);
+  }
+
+  /* ============================== 设置面板 ==============================
+   *
+   * 控件用一张声明式表描述（SETTING_SPEC），加新设置只需要往表里加一行 ——
+   * 不用改 HTML、不用改事件绑定。
+   *
+   * 交互细节：拖滑块时只改 CSS 变量（previewSetting），松手才 setCfg() 落盘 +
+   * 完整重渲染；否则每动一格都要重排整个列表。
+   * ================================================================= */
+
+  /** 该设置对应哪个 CSS 变量（拖拽时用来做即时预览） */
+  const SETTING_CSS_VAR = {
+    railWidth: "--cx-rail-w",
+    panelWidth: "--v2cx-panel-w",
+    threadMaxWidth: "--v2cx-thread-max",
+    thumbWidth: "--v2cx-thumb-w",
+    thumbHeight: "--v2cx-thumb-h"
+  };
+
+  const SETTING_SPEC = [
+    { section: "外观", items: [
+      { key: "theme", type: "select", label: "主题", hint: "「跟随站点」会读 V2EX 自己的明暗设置",
+        options: [["auto", "跟随站点"], ["dark", "深色"], ["light", "浅色"]] },
+      { key: "railWidth", type: "range", label: "左栏宽度", min: 200, max: 520, step: 2, unit: "px" },
+      { key: "panelWidth", type: "range", label: "代码面板宽度", min: 240, max: 900, step: 4, unit: "px" },
+      { key: "threadMaxWidth", type: "range", label: "正文最大宽度", min: 560, max: 1100, step: 10, unit: "px" },
+      { key: "codePanel", type: "toggle", label: "显示右侧代码面板", hint: "那块代码是假数据，纯氛围" },
+      { key: "lang", type: "select", label: "代码面板语言",
+        options: () => Object.keys(CODE_LANGS).map((k) => [k, CODE_LANGS[k].label]) },
+      { key: "codeMode", type: "select", label: "代码面板视图", options: [["code", "代码"], ["diff", "diff"]] }
+    ] },
+    { section: "伪装", items: [
+      { key: "stealth", type: "toggle", label: "伪装模式",
+        hint: "品牌名 → Codex、标签页标题 → 源码文件名、启用下面的应急键" },
+      { key: "brandName", type: "text", label: "左栏品牌名",
+        placeholder: "留空 = 跟随伪装模式" },
+      { key: "projectName", type: "text", label: "项目名",
+        hint: "出现在代码面板面包屑和标签页标题里（如 \"topic_cache.rs — platform\"）" },
+      { key: "stealthKey", type: "select", label: "应急伪装键", hint: "Ctrl+Shift+H 始终有效",
+        options: [["esc2", "连按两下 Esc"], ["f2", "F2"], ["ctrl+shift+h", "Ctrl+Shift+H"]] },
+      { key: "favicon", type: "select", label: "标签页图标",
+        options: [["codex", "Codex 风格圆角图标"], ["site", "保留 V2EX 原图标"]] }
+    ] },
+    { section: "Agent 装饰", items: [
+      { key: "decorations", type: "toggle", label: "启用 agent 装饰",
+        hint: "思考块和工具调用行。内容是按种子生成的假文案，跟帖子无关，纯装饰" },
+      { key: "listTraceRate", type: "range", label: "列表痕迹密度", min: 0, max: 100, step: 2, unit: "%",
+        hint: "0 = 列表里不插痕迹" },
+      { key: "listThinkingOpen", type: "toggle", label: "列表思考块默认展开",
+        hint: "关掉时只占一行「✻ Worked for Ns ▸」，点一下展开" },
+      { key: "detailThinkingOpen", type: "toggle", label: "详情页思考块默认展开" }
+    ] },
+    { section: "正文图片", items: [
+      { key: "thumbWidth", type: "range", label: "缩略图宽度上限", min: 120, max: 600, step: 10, unit: "px" },
+      { key: "thumbHeight", type: "range", label: "缩略图高度上限", min: 80, max: 400, step: 10, unit: "px" },
+      { key: "thumbPreview", type: "toggle", label: "鼠标悬停浮出大图" }
+    ] }
+  ];
+
+  function specItem(key) {
+    for (const g of SETTING_SPEC) {
+      for (const it of g.items) if (it.key === key) return it;
+    }
+    return null;
+  }
+
+  function settingControlHtml(it) {
+    const v = cfg(it.key);
+    if (it.type === "toggle") {
+      return '<button type="button" class="v2cx-switch' + (v ? " on" : "") + '"' +
+        ' role="switch" aria-checked="' + (v ? "true" : "false") + '"' +
+        ' data-set-toggle="' + it.key + '" aria-label="' + escapeHtml(it.label) + '"><span></span></button>';
+    }
+    if (it.type === "range") {
+      return '<input type="range" class="v2cx-range" data-set-range="' + it.key + '"' +
+        ' min="' + it.min + '" max="' + it.max + '" step="' + it.step + '" value="' + v + '">' +
+        '<span class="v2cx-set-val" data-set-val="' + it.key + '">' + v + (it.unit || "") + "</span>";
+    }
+    if (it.type === "select") {
+      const opts = typeof it.options === "function" ? it.options() : it.options;
+      return '<select class="v2cx-select" data-set-select="' + it.key + '">' +
+        opts.map(([val, text]) =>
+          '<option value="' + escapeHtml(val) + '"' +
+          (String(v) === String(val) ? " selected" : "") + ">" + escapeHtml(text) + "</option>").join("") +
+        "</select>";
+    }
+    return '<input type="text" class="v2cx-text" data-set-text="' + it.key + '" value="' +
+      escapeHtml(v) + '" placeholder="' + escapeHtml(it.placeholder || "") + '">';
+  }
+
+  function settingsOpen() {
+    const m = document.querySelector(".v2cx-modal");
+    return !!m && !m.hidden;
+  }
+
+  function closeSettings() {
+    const m = document.querySelector(".v2cx-modal");
+    if (m) m.hidden = true;
+  }
+
+  /** 拖滑块时的即时预览：只改 CSS 变量，不写存储、不重渲染 */
+  function previewSetting(key, value) {
+    const varName = SETTING_CSS_VAR[key];
+    if (varName) document.documentElement.style.setProperty(varName, value + "px");
+  }
+
+  /**
+   * 把面板里所有控件的状态刷成 cfg() 的当前值。
+   * 用于「别处改了设置」的场景（顶栏的面板开关、拖拽把手、恢复默认），
+   * 面板没打开时直接跳过。
+   */
+  function syncSettingControls() {
+    const m = document.querySelector(".v2cx-modal");
+    if (!m || m.hidden) return;
+    m.querySelectorAll("[data-set-toggle]").forEach((el2) => {
+      const on = !!cfg(el2.dataset.setToggle);
+      el2.classList.toggle("on", on);
+      el2.setAttribute("aria-checked", on ? "true" : "false");
+    });
+    m.querySelectorAll("[data-set-range]").forEach((el3) => {
+      const it = specItem(el3.dataset.setRange);
+      el3.value = cfg(el3.dataset.setRange);
+      const out = m.querySelector('[data-set-val="' + el3.dataset.setRange + '"]');
+      if (out) out.textContent = el3.value + ((it && it.unit) || "");
+    });
+    m.querySelectorAll("[data-set-select]").forEach((el4) => {
+      el4.value = cfg(el4.dataset.setSelect);
+    });
+    m.querySelectorAll("[data-set-text]").forEach((el5) => {
+      el5.value = cfg(el5.dataset.setText);
+    });
+  }
+
+  function renderSettingsPanel() {
+    let m = document.querySelector(".v2cx-modal");
+    if (!m) {
+      m = el("div", "v2cx-modal");
+      m.hidden = true;
+      document.body.appendChild(m);
+    }
+    const rows = SETTING_SPEC.map((g) =>
+      '<div class="v2cx-set-section">' + escapeHtml(g.section) + "</div>" +
+      g.items.map((it) =>
+        '<div class="v2cx-set-row" data-row="' + it.key + '">' +
+        '<div class="v2cx-set-label"><span>' + escapeHtml(it.label) + "</span>" +
+        (it.hint ? '<div class="v2cx-set-hint">' + escapeHtml(it.hint) + "</div>" : "") +
+        "</div>" +
+        '<div class="v2cx-set-ctrl">' + settingControlHtml(it) + "</div>" +
+        "</div>").join("")
+    ).join("");
+
+    m.innerHTML =
+      '<div class="v2cx-modal-card" role="dialog" aria-modal="true" aria-label="设置">' +
+      '<div class="v2cx-modal-head">' +
+      '<span class="v2cx-modal-title">设置</span>' +
+      '<span class="v2cx-modal-sub">改动即时生效并存在本机</span>' +
+      '<button type="button" class="v2cx-modal-x" data-settings-close title="关闭（Esc）">×</button>' +
+      "</div>" +
+      '<div class="v2cx-modal-body">' + rows + "</div>" +
+      '<div class="v2cx-modal-foot">' +
+      '<button type="button" class="v2cx-modal-btn" data-settings-reset>恢复默认</button>' +
+      '<span>设置存在 localStorage 的 <code>v2cx:settings</code>，清掉就回到初始状态</span>' +
+      "</div>" +
+      "</div>";
+    return m;
+  }
+
+  function openSettings() {
+    const m = renderSettingsPanel();
+    m.hidden = false;
+    m.querySelector("[data-settings-close]")?.focus();
+  }
+
+  function toggleSettings() {
+    if (settingsOpen()) closeSettings();
+    else openSettings();
+  }
+
+  function bindSettingsPanel() {
+    // 面板是常驻 DOM（懒建），所以事件只绑一次
+    document.addEventListener("click", (e) => {
+      const t = e.target;
+      if (t.closest && t.closest("[data-settings-open]")) { openSettings(); return; }
+      if (!settingsOpen()) return;
+
+      const m = document.querySelector(".v2cx-modal");
+      if (t.closest("[data-settings-close]")) { closeSettings(); return; }
+      if (t.closest("[data-settings-reset]")) {
+        resetSettings();
+        renderSettingsPanel();
+        toastNow("已恢复默认设置");
+        return;
+      }
+      // 点遮罩关闭（点卡片内部不关）
+      if (t === m) { closeSettings(); return; }
+
+      const sw = t.closest("[data-set-toggle]");
+      if (sw) {
+        const key = sw.dataset.setToggle;
+        const next = !cfg(key);
+        sw.classList.toggle("on", next);
+        sw.setAttribute("aria-checked", next ? "true" : "false");
+        setCfg(key, next);
+        return;
+      }
+    });
+
+    // 拖滑块：input 只预览，change 才落盘 + 重渲染
+    document.addEventListener("input", (e) => {
+      const r = e.target;
+      if (!r.dataset || !r.dataset.setRange) return;
+      const key = r.dataset.setRange;
+      const it = specItem(key);
+      previewSetting(key, Number(r.value));
+      const out = document.querySelector('[data-set-val="' + key + '"]');
+      if (out) out.textContent = r.value + ((it && it.unit) || "");
+      // 文本类输入也需要即时反馈（品牌名 / 项目名 → 标题、rail）
+      if (key === "brandName" || key === "projectName") {
+        if (!SETTINGS) SETTINGS = loadSettings();
+        SETTINGS[key] = r.value;
+        applyVisualSettings();
+      }
+    });
+
+    document.addEventListener("input", (e) => {
+      const r = e.target;
+      if (!r.dataset || !r.dataset.setText) return;
+      const key = r.dataset.setText;
+      if (!SETTINGS) SETTINGS = loadSettings();
+      SETTINGS[key] = r.value;
+      applyVisualSettings();
+    });
+
+    // 落盘：range / select / text 都在 change 时做完整应用
+    document.addEventListener("change", (e) => {
+      const r = e.target;
+      if (!r.dataset) return;
+      if (r.dataset.setRange) {
+        setCfg(r.dataset.setRange, Number(r.value));
+      } else if (r.dataset.setSelect) {
+        setCfg(r.dataset.setSelect, r.value);
+      } else if (r.dataset.setText) {
+        setCfg(r.dataset.setText, r.value);
+      }
+    });
   }
 
   /* ============================== 编排 ============================== */
@@ -4554,7 +5107,7 @@
       if (isSupported(route())) document.documentElement.classList.add(LOCK_CLASS);
       applyFavicon();
     }
-    restoreWidths();
+    applyVisualSettings();
 
     // 标签重新可见时再刷一次 favicon（部分浏览器未聚焦时会缓存旧图标）
     document.addEventListener("visibilitychange", () => {
@@ -4563,7 +5116,9 @@
 
     bindLightbox();
     bindImgPreview();
+    bindSettingsPanel();
     bindStealthKeys();
+    bindSettingsKeys();
 
     domReady().then(() => {
       scheduleApply();

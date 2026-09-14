@@ -163,24 +163,39 @@ $ ▌
 > 大面积色块判定为背景 —— 否则「选中项的高亮底色」会被当成文字，
 > 测出来的浅色主题对比度会假性偏低（曾经误判为 2.85:1）。
 
-## 可调项
+## 设置面板
 
-脚本顶部 `CONFIG`：
+顶栏那个齿轮图标（或 `Ctrl/⌘ + ,`）打开，改动即时生效并存在
+localStorage 的 `v2cx:settings` 里，底部有「恢复默认」。
 
-| 字段 | 默认 | 说明 |
-|---|---|---|
-| `stealth` | `true` | 伪装模式总开关。关掉 → 品牌名回到 `V2EX`、不再改标题、禁用应急键 |
-| `stealthKey` | `"esc2"` | 应急键：`"esc2"` 双击 Esc / `"f2"` / `"ctrl+shift+h"` |
-| `brandName` | `null` | `null` = 由 `stealth` 决定（Codex / V2EX） |
-| `projectName` | `"platform"` | 代码面板 / 面包屑 / 标签页标题里的项目名 |
-| `favicon` | `"codex"` | `"codex"` 圆角图标 / `"site"` 保留 V2EX 原图标 |
-| `railWidth` | `306` | 左栏宽度 |
-| `codePanel` | `true` | 右侧代码面板 |
-| `threadMaxWidth` | `760` | 正文最大宽度 |
-| `thumbWidth` / `thumbHeight` | `260` / `170` | 正文图片缩略到多大（悬浮预览不受此限制） |
-| `theme` | `"auto"` | `auto` / `dark` / `light` |
+![设置面板](docs/screenshots/settings.png)
 
-`QUICK_NODES` 是 rail 里的常用节点列表，按自己口味增删。
+| 分组 | 项 | 默认 | 说明 |
+|---|---|---|---|
+| **外观** | `theme` | `auto` | 「跟随站点」会读 V2EX 自己的明暗设置 |
+| | `railWidth` | `306` | 左栏宽度 |
+| | `panelWidth` | `460` | 代码面板宽度 |
+| | `threadMaxWidth` | `760` | 正文最大宽度 |
+| | `codePanel` | `true` | 显示右侧代码面板 |
+| | `lang` / `codeMode` | `rust` / `code` | 代码面板的语言与视图 |
+| **伪装** | `stealth` | `true` | 关掉 → 品牌名回到 `V2EX`、不再改标题、禁用应急键 |
+| | `brandName` | 空 | 留空 = 由 `stealth` 决定（Codex / V2EX） |
+| | `projectName` | `platform` | 代码面板面包屑和标签页标题里的项目名 |
+| | `stealthKey` | `esc2` | `esc2` 双击 Esc / `f2` / `ctrl+shift+h`（后者始终有效） |
+| | `favicon` | `codex` | `codex` 圆角图标 / `site` 保留 V2EX 原图标 |
+| **Agent 装饰** | `decorations` | `true` | 思考块 + 工具调用行的总开关 |
+| | `listTraceRate` | `46` | 列表痕迹密度（%），`0` = 列表里不插 |
+| | `listThinkingOpen` | **`false`** | 列表思考块是否默认展开 |
+| | `detailThinkingOpen` | `true` | 详情页思考块是否默认展开 |
+| **正文图片** | `thumbWidth` / `thumbHeight` | `260` / `170` | 缩略图尺寸上限 |
+| | `thumbPreview` | `true` | 鼠标悬停浮出大图 |
+
+> 列表的思考块**默认收起**（只占一行 `✻ Worked for 27s ▸`）—— 展开态一段就三四行，
+> 50 条列表全展开会把页面撑得没法扫。详情页默认展开，因为那里本来就是逐楼读。
+> 两种状态都能点标题行切换。
+
+`QUICK_NODES`（rail 里的常用节点）和 `SETTING_SPEC`（面板控件表）在脚本里，按需增删。
+加一个新设置只要往 `DEFAULTS` 和 `SETTING_SPEC` 各加一行，不用改 HTML 和事件绑定。
 
 ## 键盘 / 交互
 
@@ -188,9 +203,10 @@ $ ▌
 |---|---|
 | `Esc` `Esc` | **应急伪装**（切到代码编辑器 + 终端） |
 | `Ctrl/⌘ + Shift + H` | 同上，备用键 |
+| `Ctrl/⌘ + ,` | 打开 / 关闭设置面板 |
 | `Ctrl/⌘ + K` | 搜索 |
 | 鼠标停在楼层上 | 浮出 `回复 / 赞 / 收藏 / 复制链接` 胶囊 |
-| 点 `✻ Worked for Ns` | 收起思考块（默认是展开的，再点展开） |
+| 点 `✻ Worked for Ns` | 展开 / 收起思考块（列表默认收起、详情页默认展开，都可在设置里改） |
 | 鼠标停在正文图片上 | 浮出大图预览（fixed 定位、不引起重排，带文件名和原始尺寸） |
 | 点正文图片 | 灯箱（`Esc` 或点背景关闭），图片本身的外链被拦下 |
 | 左栏右缘拖拽 / 双击 | 调 rail 宽度 / 重置为 306px |
@@ -239,7 +255,7 @@ $ ▌
 
 ## 已验证的行为
 
-`npm test` 在 jsdom 里加载**真实 V2EX 页面标记**（`ref/*.html` 抓取快照）跑 **785 条断言**：
+`npm test` 在 jsdom 里加载**真实 V2EX 页面标记**（`ref/*.html` 抓取快照）跑 **831 条断言**：
 
 - 11 类路由（`/`、各 `?tab=`、`/recent`、`/go/x`、`/t/x`、`/member/x`、`/planes`）+ 未接管路由 + 空 DOM 兜底
 - 列表行 / 楼层 / 楼号 / 时间本地化 / 分页 chip / 节点筛选
@@ -314,7 +330,7 @@ docs/screenshots/*.png      README 用的效果图
 ref/README.md               测试夹具说明（来源、内容、怎么重新抓）
 ref/*.html                  真实 V2EX 页面快照，仅供测试
 
-tools/test-jsdom.js         npm test        —— 785 条断言
+tools/test-jsdom.js         npm test        —— 831 条断言
 tools/test-harness.js       npm run harness —— 本地测试台
 tools/shots.sh              npm run shots   —— 无头 Chrome 批量截图
 tools/measure-contrast.js   npm run contrast—— 从截图像素测「有效对比度」

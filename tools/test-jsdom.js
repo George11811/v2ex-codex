@@ -136,13 +136,13 @@ async function runCase(c) {
     check(c.name, "痕迹是行级兄弟节点（不在 <a> 里）",
       [...traces].every((x) => x.parentElement === rowsBox && !x.closest("a")));
     const listThink = rowsBox.querySelectorAll(":scope > .v2cx-think");
-    // 默认展开（对齐参考图：满屏英文推理才是伪装重点）
-    check(c.name, "列表思考块默认展开",
-      listThink.length > 0 && [...listThink].every((x) => x.classList.contains("open")),
+    // 默认收起（listThinkingOpen 默认 false）——展开态太长会把列表撑得没法扫
+    check(c.name, "列表思考块默认收起",
+      listThink.length > 0 && [...listThink].every((x) => !x.classList.contains("open")),
       "n=" + listThink.length);
-    check(c.name, "展开态正文可见（display 非 none）",
+    check(c.name, "收起态正文隐藏（display: none）",
       listThink.length > 0 &&
-      win.getComputedStyle(listThink[0].querySelector(".v2cx-think-body")).display !== "none",
+      win.getComputedStyle(listThink[0].querySelector(".v2cx-think-body")).display === "none",
       listThink.length ? win.getComputedStyle(listThink[0].querySelector(".v2cx-think-body")).display : "none");
     // jsdom 不计算伪元素 content，所以直接校验样式规则本身
     // （用 includes 而不是正则：正则要穿过 python→js 两层转义，写过三次都写错了）
@@ -156,13 +156,14 @@ async function runCase(c) {
       sheet.includes(".v2cx-think:not(.open) .v2cx-think-chev::after") &&
       sheet.includes(BS + "25b8"));
     if (listThink.length) {
+      // 默认是收起的，所以第一次点击是展开
       const head = listThink[0].querySelector(".v2cx-think-head");
       head.click();
-      check(c.name, "点击后收起", !listThink[0].classList.contains("open"));
-      check(c.name, "收起后正文隐藏",
-        win.getComputedStyle(listThink[0].querySelector(".v2cx-think-body")).display === "none");
+      check(c.name, "点击后展开", listThink[0].classList.contains("open"));
+      check(c.name, "展开后正文可见",
+        win.getComputedStyle(listThink[0].querySelector(".v2cx-think-body")).display !== "none");
       head.click();
-      check(c.name, "再点又展开", listThink[0].classList.contains("open"));
+      check(c.name, "再点又收起", !listThink[0].classList.contains("open"));
     }
     // 图标必须解析出来（自建图标集漏 key 会渲染成字面 undefined）
     const runlines = rowsBox.querySelectorAll(":scope > .v2cx-runline");
@@ -306,6 +307,8 @@ async function runCase(c) {
       head.click();
       check(c.name, "再点可展开", think[0].classList.contains("open") === before);
     }
+    check(c.name, "详情思考块默认展开（detailThinkingOpen）",
+      [...think].every((x) => x.classList.contains("open")), "n=" + think.length);
     check(c.name, "详情思考块有 sparkle 图标",
       [...think].every((x) => x.querySelector(".v2cx-spin svg")), "n=" + think.length);
     check(c.name, "详情工具调用行有图标",
@@ -824,6 +827,195 @@ async function runContrastCase() {
   dom.window.close();
 }
 
+/**
+ * 设置面板：控件齐全、改动能落盘并生效、迁移旧键、Esc 让位
+ */
+function freshDom(htmlFile, url, preset) {
+  const dom = new JSDOM(stripScripts(fs.readFileSync(path.join(ROOT, htmlFile), "utf8")), {
+    url, runScripts: "dangerously", pretendToBeVisual: true
+  });
+  if (preset) for (const [k, v] of Object.entries(preset)) dom.window.localStorage.setItem(k, v);
+  dom.window.open = () => null;
+  dom.window.eval(USCRIPT);
+  return dom;
+}
+
+async function runSettingsCase() {
+  const name = "设置面板";
+  console.log(`\n──── ${name} ────`);
+  const dom = freshDom("ref/home.html", "https://www.v2ex.com/");
+  const win = dom.window, doc = win.document;
+  await new Promise((r) => setTimeout(r, 250));
+
+  // ── 入口 ──
+  check(name, "面板默认不建（懒建）", !doc.querySelector(".v2cx-modal"));
+  const btn = doc.querySelector("[data-settings-open]");
+  check(name, "顶栏有设置按钮", !!btn);
+  btn.click();
+  const m = doc.querySelector(".v2cx-modal");
+  check(name, "点按钮打开面板", !!m && !m.hidden);
+  check(name, "面板有 dialog 语义", !!m.querySelector('[role="dialog"][aria-modal="true"]'));
+
+  // ── 控件齐全（数字写死是为了让「往 SPEC 里加东西忘了渲染」立刻暴露）──
+  check(name, "开关 6 个", m.querySelectorAll("[data-set-toggle]").length === 6,
+    "n=" + m.querySelectorAll("[data-set-toggle]").length);
+  check(name, "滑块 6 个", m.querySelectorAll("[data-set-range]").length === 6,
+    "n=" + m.querySelectorAll("[data-set-range]").length);
+  check(name, "下拉 5 个", m.querySelectorAll("[data-set-select]").length === 5,
+    "n=" + m.querySelectorAll("[data-set-select]").length);
+  check(name, "文本框 2 个", m.querySelectorAll("[data-set-text]").length === 2,
+    "n=" + m.querySelectorAll("[data-set-text]").length);
+  check(name, "分了 4 个分组", m.querySelectorAll(".v2cx-set-section").length === 4,
+    "n=" + m.querySelectorAll(".v2cx-set-section").length);
+  check(name, "每个控件都有 label",
+    [...m.querySelectorAll(".v2cx-set-row")].every((r) => r.querySelector(".v2cx-set-label span")));
+
+  // ── 开关：改了就落盘 + 生效 ──
+  const stored = () => JSON.parse(win.localStorage.getItem("v2cx:settings") || "{}");
+  check(name, "初始没写过 localStorage", Object.keys(stored()).length === 0);
+
+  m.querySelector('[data-set-toggle="listThinkingOpen"]').click();
+  check(name, "开关写进 v2cx:settings", stored().listThinkingOpen === true,
+    JSON.stringify(stored()));
+  check(name, "开关变成 on 态",
+    m.querySelector('[data-set-toggle="listThinkingOpen"]').classList.contains("on"));
+  await new Promise((r) => setTimeout(r, 60));
+  const thinks = doc.querySelectorAll(".v2cx-rows > .v2cx-think");
+  check(name, "打开后列表思考块默认展开",
+    thinks.length > 0 && [...thinks].every((x) => x.classList.contains("open")), "n=" + thinks.length);
+
+  // 关回去
+  m.querySelector('[data-set-toggle="listThinkingOpen"]').click();
+  await new Promise((r) => setTimeout(r, 60));
+  check(name, "关掉后恢复收起",
+    [...doc.querySelectorAll(".v2cx-rows > .v2cx-think")].every((x) => !x.classList.contains("open")));
+
+  // ── 滑块：input 只预览，change 才落盘 ──
+  const range = m.querySelector('[data-set-range="listTraceRate"]');
+  const rateBefore = stored().listTraceRate; // 前面的开关点击已经写过一次，值应为默认 46
+  range.value = "0";
+  range.dispatchEvent(new win.Event("input", { bubbles: true }));
+  check(name, "拖拽中不写存储（避免每格都落盘）",
+    stored().listTraceRate === rateBefore, rateBefore + " -> " + stored().listTraceRate);
+  range.dispatchEvent(new win.Event("change", { bubbles: true }));
+  check(name, "松手才写存储", stored().listTraceRate === 0);
+  await new Promise((r) => setTimeout(r, 60));
+  check(name, "密度 0 时列表无痕迹",
+    doc.querySelectorAll(".v2cx-rows > .v2cx-think, .v2cx-rows > .v2cx-runline").length === 0);
+
+  // rail 宽度滑块 → CSS 变量即时预览
+  const rw = m.querySelector('[data-set-range="railWidth"]');
+  rw.value = "420";
+  rw.dispatchEvent(new win.Event("input", { bubbles: true }));
+  check(name, "拖动即时改 CSS 变量",
+    doc.documentElement.style.getPropertyValue("--cx-rail-w") === "420px",
+    doc.documentElement.style.getPropertyValue("--cx-rail-w"));
+  rw.dispatchEvent(new win.Event("change", { bubbles: true }));
+  check(name, "宽度落盘", stored().railWidth === 420);
+
+  // ── 下拉 ──
+  const themeSel = m.querySelector('[data-set-select="theme"]');
+  themeSel.value = "dark";
+  themeSel.dispatchEvent(new win.Event("change", { bubbles: true }));
+  check(name, "主题落盘", stored().theme === "dark");
+  check(name, "主题立即生效", !doc.documentElement.classList.contains("v2cx-light"));
+
+  // ── 文本框：品牌名 ──
+  const brand = m.querySelector('[data-set-text="brandName"]');
+  brand.value = "Acme";
+  brand.dispatchEvent(new win.Event("input", { bubbles: true }));
+  brand.dispatchEvent(new win.Event("change", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 60));
+  check(name, "品牌名落盘", stored().brandName === "Acme");
+  check(name, "品牌名生效到 rail",
+    (doc.querySelector(".v2cx-rail-brand-name") || {}).textContent.trim().startsWith("Acme"),
+    (doc.querySelector(".v2cx-rail-brand-name") || {}).textContent.trim());
+
+  // ── 装饰总开关 ──
+  m.querySelector('[data-set-toggle="decorations"]').click();
+  await new Promise((r) => setTimeout(r, 60));
+  check(name, "关掉装饰后列表无痕迹",
+    doc.querySelectorAll(".v2cx-rows > .v2cx-think, .v2cx-rows > .v2cx-runline").length === 0);
+  check(name, "关掉装饰后只剩分隔线",
+    doc.querySelectorAll(".v2cx-rows > .v2cx-row-sep").length > 5);
+
+  // ── Esc 让位（不能触发应急伪装）──
+  doc.dispatchEvent(new win.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  check(name, "Esc 关面板", doc.querySelector(".v2cx-modal").hidden);
+  check(name, "Esc 关面板时没触发应急伪装",
+    !doc.documentElement.classList.contains("v2cx-boss-on"));
+
+  // ── 恢复默认 ──
+  // 复位按钮只在面板打开时生效，所以先打开
+  doc.querySelector("[data-settings-open]").click();
+  const m2 = doc.querySelector(".v2cx-modal");
+  win.localStorage.setItem("v2cx:settings", JSON.stringify({ theme: "dark", railWidth: 500, listTraceRate: 0 }));
+  m2.querySelector("[data-settings-reset]").click();
+  const after = stored();
+  check(name, "恢复默认后 theme=auto", after.theme === "auto", JSON.stringify(after.theme));
+  check(name, "恢复默认后 railWidth=306", after.railWidth === 306);
+  check(name, "恢复默认后密度回到 46", after.listTraceRate === 46);
+  check(name, "恢复默认后面板控件同步刷新",
+    m2.querySelector('[data-set-select="theme"]').value === "auto");
+  check(name, "恢复默认后 trace 痕迹回来",
+    doc.querySelectorAll(".v2cx-rows > .v2cx-think, .v2cx-rows > .v2cx-runline").length > 0);
+
+  // ── 别处改了设置，面板要跟着同步 ──
+  doc.querySelector("[data-settings-open]").click();
+  const m3 = doc.querySelector(".v2cx-modal");
+  const before = m3.querySelector('[data-set-toggle="codePanel"]').classList.contains("on");
+  doc.querySelector(".v2cx-panel-toggle").click(); // 顶栏那个分屏按钮
+  check(name, "顶栏改面板开关后，设置面板同步",
+    m3.querySelector('[data-set-toggle="codePanel"]').classList.contains("on") !== before,
+    "before=" + before);
+  doc.querySelector(".v2cx-panel-toggle").click();
+
+  // ── Ctrl+, 开关 ──
+  if (!doc.querySelector(".v2cx-modal").hidden) doc.querySelector("[data-settings-close]").click();
+  win.dispatchEvent(new win.KeyboardEvent("keydown", { key: ",", ctrlKey: true, bubbles: true }));
+  check(name, "Ctrl+, 打开面板", !doc.querySelector(".v2cx-modal").hidden);
+  win.dispatchEvent(new win.KeyboardEvent("keydown", { key: ",", ctrlKey: true, bubbles: true }));
+  check(name, "Ctrl+, 再按关闭", doc.querySelector(".v2cx-modal").hidden);
+
+  dom.window.close();
+}
+
+/** 旧版分散的 localStorage 键要能迁移到 v2cx:settings */
+async function runSettingsMigrationCase() {
+  const name = "设置迁移";
+  console.log(`\n──── ${name} ────`);
+  const dom = freshDom("ref/home.html", "https://www.v2ex.com/", {
+    "v2cx:theme": "dark",
+    "v2cx:railW": "420",
+    "v2cx:panelHidden": "1",
+    "v2cx:lang": "go"
+  });
+  const win = dom.window, doc = win.document;
+  await new Promise((r) => setTimeout(r, 250));
+
+  check(name, "旧 theme=dark 生效", !doc.documentElement.classList.contains("v2cx-light"));
+  check(name, "旧 railW=420 生效",
+    doc.documentElement.style.getPropertyValue("--cx-rail-w") === "420px",
+    doc.documentElement.style.getPropertyValue("--cx-rail-w"));
+  check(name, "旧 panelHidden=1 → 代码面板隐藏",
+    doc.querySelector(".v2cx-main").classList.contains("panel-hidden"));
+  check(name, "旧 lang=go 生效",
+    (doc.querySelector("[data-lang-label]") || {}).textContent === "Go",
+    (doc.querySelector("[data-lang-label]") || {}).textContent);
+  // 迁移只读不删（删旧键发生在「恢复默认」时）
+  check(name, "旧键仍在（迁移不破坏原数据）", win.localStorage.getItem("v2cx:theme") === "dark");
+
+  // 新的设置面板能读到迁移后的值
+  doc.querySelector("[data-settings-open]").click();
+  const m = doc.querySelector(".v2cx-modal");
+  check(name, "面板显示迁移后的主题",
+    m.querySelector('[data-set-select="theme"]').value === "dark");
+  check(name, "面板显示迁移后的宽度",
+    m.querySelector('[data-set-range="railWidth"]').value === "420");
+
+  dom.window.close();
+}
+
 /** 浅色模式：预置 localStorage 后重跑，验证 class 与 token 切换 */
 async function runLightModeCase() {
   const name = "浅色模式";
@@ -903,6 +1095,8 @@ async function runFallbackCase() {
   try { await runStealthCase(); } catch (e) { check("隐蔽性", "测试自身未崩溃", false, String(e)); }
   try { await runImageCase(); } catch (e) { check("图片缩略图", "测试自身未崩溃", false, String(e)); }
   try { await runContrastCase(); } catch (e) { check("可读性对比度", "测试自身未崩溃", false, String(e)); }
+  try { await runSettingsCase(); } catch (e) { check("设置面板", "测试自身未崩溃", false, String(e)); }
+  try { await runSettingsMigrationCase(); } catch (e) { check("设置迁移", "测试自身未崩溃", false, String(e)); }
   try { await runResizerCase(); } catch (e) { check("拖拽调宽", "测试自身未崩溃", false, String(e)); }
   try { await runLightModeCase(); } catch (e) { check("浅色模式", "测试自身未崩溃", false, String(e)); }
   try { await runFallbackCase(); } catch (e) { check("兜底", "测试自身未崩溃", false, String(e)); }

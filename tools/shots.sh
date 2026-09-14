@@ -45,6 +45,8 @@ TARGETS=(
   "img-preview|/t/1241734?demo=img|1500,1000|"
   "boss|/t/1241734?demo=boss|1500,1000|"
   "boss-dark|/t/1241734?demo=boss|1500,1000|dark"
+  "settings|/?demo=settings|1500,1000|"
+  "settings-dark|/?demo=settings|1500,1000|dark"
   "home|/|1500,1000|"
   "dark-home|/|1500,1000|dark"   # 对比度测量基准
   "light-home|/|1500,1000|light" # 对比度测量基准

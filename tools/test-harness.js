@@ -214,6 +214,13 @@ function demoScript(url) {
     }, 300);<\/script>`;
   }
 
+  if (demo === "settings") {
+    return `<script>setTimeout(function(){
+      var b = document.querySelector("[data-settings-open]");
+      if (b) b.click();
+    }, 350);<\/script>`;
+  }
+
   if (demo === "boss") {
     return `<script>setTimeout(function(){
       var w = window;

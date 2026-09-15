@@ -857,7 +857,7 @@ async function runSettingsCase() {
   check(name, "面板有 dialog 语义", !!m.querySelector('[role="dialog"][aria-modal="true"]'));
 
   // ── 控件齐全（数字写死是为了让「往 SPEC 里加东西忘了渲染」立刻暴露）──
-  check(name, "开关 6 个", m.querySelectorAll("[data-set-toggle]").length === 6,
+  check(name, "开关 8 个", m.querySelectorAll("[data-set-toggle]").length === 8,
     "n=" + m.querySelectorAll("[data-set-toggle]").length);
   check(name, "滑块 6 个", m.querySelectorAll("[data-set-range]").length === 6,
     "n=" + m.querySelectorAll("[data-set-range]").length);
@@ -865,7 +865,7 @@ async function runSettingsCase() {
     "n=" + m.querySelectorAll("[data-set-select]").length);
   check(name, "文本框 2 个", m.querySelectorAll("[data-set-text]").length === 2,
     "n=" + m.querySelectorAll("[data-set-text]").length);
-  check(name, "分了 4 个分组", m.querySelectorAll(".v2cx-set-section").length === 4,
+  check(name, "分了 5 个分组", m.querySelectorAll(".v2cx-set-section").length === 5,
     "n=" + m.querySelectorAll(".v2cx-set-section").length);
   check(name, "每个控件都有 label",
     [...m.querySelectorAll(".v2cx-set-row")].every((r) => r.querySelector(".v2cx-set-label span")));
@@ -1016,6 +1016,140 @@ async function runSettingsMigrationCase() {
   dom.window.close();
 }
 
+/**
+ * 楼中楼引用卡片：V2EX 的「楼中楼」是回复正文以 @成员 开头，
+ * 这里验证能正确解析出引用的楼层、内容、可折叠、可跳转。
+ */
+async function runQuoteCase() {
+  const name = "楼中楼引用";
+  console.log(`\n──── ${name} ────`);
+  const dom = freshDom("ref/topic.html", "https://www.v2ex.com/t/1241734");
+  const win = dom.window, doc = win.document;
+  await new Promise((r) => setTimeout(r, 250));
+
+  const quotes = doc.querySelectorAll(".v2cx-quote");
+  // topic.html 共 19 楼，其中 9 条以 @ 开头
+  check(name, "每一条楼中楼都有引用卡片", quotes.length === 9, "n=" + quotes.length);
+
+  // ── 结构 ──
+  const q0 = quotes[0];
+  check(name, "卡片有头部/正文/箭头",
+    !!q0.querySelector(".v2cx-quote-head") &&
+    !!q0.querySelector(".v2cx-quote-body") &&
+    !!q0.querySelector(".v2cx-quote-chev"));
+  check(name, "头部有引用图标（不是 undefined）",
+    /<svg/.test(q0.querySelector(".v2cx-quote-ic").innerHTML));
+  const title = q0.querySelector(".v2cx-quote-title").textContent.trim();
+  check(name, "标题格式「引用 N 楼 · 用户名」",
+    /^引用 \d+ 楼 · \S+$/.test(title), JSON.stringify(title));
+  check(name, "卡片默认展开（quoteOpen 默认 true）",
+    [...quotes].every((x) => x.classList.contains("open")));
+  check(name, "展开态正文可见",
+    win.getComputedStyle(q0.querySelector(".v2cx-quote-body")).display !== "none");
+  check(name, "正文有被引内容",
+    q0.querySelector(".v2cx-quote-body").textContent.trim().length > 5,
+    JSON.stringify(q0.querySelector(".v2cx-quote-body").textContent.trim().slice(0, 30)));
+
+  // ── 折叠 ──
+  q0.querySelector(".v2cx-quote-head").click();
+  check(name, "点头部可折叠", !q0.classList.contains("open"));
+  check(name, "折叠后正文隐藏",
+    win.getComputedStyle(q0.querySelector(".v2cx-quote-body")).display === "none");
+  q0.querySelector(".v2cx-quote-head").click();
+  check(name, "再点展开", q0.classList.contains("open"));
+
+  // ── 引用里的图片换成了占位标记 ──
+  const withImg = [...quotes].find((x) => x.querySelector(".v2cx-quote-img"));
+  check(name, "引用里的图片降级成 [图片] 占位",
+    !!withImg && withImg.querySelector(".v2cx-quote-body").querySelectorAll("img").length === 0);
+
+  // ── @ 前缀已经从正文里摘掉 ──
+  // 注意：decorateTurns 会把思考块 prepend 进 .v2cx-cooked，
+  // 所以必须先剔掉装饰再看正文，否则「不以 @ 开头」是恒真的假断言。
+  const plainBody = (turnEl) => {
+    const clone = turnEl.querySelector(".v2cx-cooked").cloneNode(true);
+    clone.querySelectorAll(".v2cx-think, .v2cx-runline").forEach((n) => n.remove());
+    return clone.textContent.trim();
+  };
+  const cleaned = [...doc.querySelectorAll(".v2cx-turn-agent")].filter((x) => x.querySelector(".v2cx-quote"));
+  check(name, "有引用的楼层，正文里不再残留 @提及",
+    cleaned.every((x) => !/^@\S/.test(plainBody(x))),
+    cleaned.map((x) => JSON.stringify(plainBody(x).slice(0, 14))).join(" | "));
+  check(name, "被摘掉的就是卡片标题里那个人（第9楼 → layxy）",
+    !plainBody(doc.getElementById("reply9")).includes("layxy") &&
+    /layxy/.test(doc.getElementById("reply9").querySelector(".v2cx-quote-title").textContent));
+
+  // ── 跳转 ──
+  const jump = q0.querySelector("[data-jump-floor]");
+  check(name, "卡片带跳转按钮", !!jump && /^\d+$/.test(jump.dataset.jumpFloor || ""),
+    jump ? jump.dataset.jumpFloor : "none");
+  const targetFloor = jump.dataset.jumpFloor;
+  const target = doc.getElementById("reply" + targetFloor);
+  check(name, "跳转目标楼层存在", !!target, "reply" + targetFloor);
+  jump.click();
+  const targetTurn = target.closest(".v2cx-turn");
+  check(name, "跳转后目标楼层高亮闪一下", targetTurn.classList.contains("v2cx-flash"));
+
+  // ── 解析正确性：引用的必须是「该用户在此楼之前最后一次发言」 ──
+  // topic.html 第 9 楼 johnbobby 引用 @layxy，而 layxy 上一次发言是第 8 楼
+  const turn9 = doc.getElementById("reply9");
+  const q9 = turn9.querySelector(".v2cx-quote");
+  check(name, "第9楼引用 @layxy 解析到第8楼",
+    !!q9 && q9.querySelector("[data-jump-floor]").dataset.jumpFloor === "8",
+    q9 ? q9.querySelector(".v2cx-quote-title").textContent.trim() : "none");
+  const q8title = turn9.querySelector(".v2cx-quote-body").textContent.trim();
+  check(name, "引用的是第8楼的内容",
+    q8title.includes("13 个模型"), JSON.stringify(q8title.slice(0, 30)));
+
+  // ── 解析不到引用目标时：不显示卡片，但 @ 必须留在正文里（不能丢信息）──
+  const ghostHtml = stripScripts(fs.readFileSync(path.join(ROOT, "ref/topic.html"), "utf8"))
+    .replace('@<a href="/member/layxy">layxy</a>', '@<a href="/member/ghostuser">ghostuser</a>');
+  const domGhost = new JSDOM(ghostHtml, {
+    url: "https://www.v2ex.com/t/1241734", runScripts: "dangerously", pretendToBeVisual: true
+  });
+  domGhost.window.open = () => null;
+  domGhost.window.eval(USCRIPT);
+  await new Promise((r) => setTimeout(r, 250));
+  const g9 = domGhost.window.document.getElementById("reply9");
+  const gClone = g9.querySelector(".v2cx-cooked").cloneNode(true);
+  gClone.querySelectorAll(".v2cx-think, .v2cx-runline").forEach((n) => n.remove());
+  check(name, "解析不到目标时不显示卡片", !g9.querySelector(".v2cx-quote"));
+  check(name, "解析不到目标时 @ 保留在正文里",
+    /^@ghostuser/.test(gClone.textContent.trim()),
+    JSON.stringify(gClone.textContent.trim().slice(0, 24)));
+  domGhost.window.close();
+
+  // ── 关掉功能后不再渲染卡片，但 @ 保留在正文里（不丢信息） ──
+  const dom2 = freshDom("ref/topic.html", "https://www.v2ex.com/t/1241734",
+    { "v2cx:settings": JSON.stringify({ quoteCard: false }) });
+  await new Promise((r) => setTimeout(r, 250));
+  check(name, "关掉后没有引用卡片",
+    dom2.window.document.querySelectorAll(".v2cx-quote").length === 0);
+  const d2 = dom2.window.document;
+  const d2turns = [...d2.querySelectorAll(".v2cx-turn-agent")];
+  const withMention = d2turns.filter((x) => {
+    const c = x.querySelector(".v2cx-cooked").cloneNode(true);
+    c.querySelectorAll(".v2cx-think, .v2cx-runline").forEach((n) => n.remove());
+    return /^@\S/.test(c.textContent.trim());
+  });
+  check(name, "关掉后 @ 提及全部保留在正文里（9 条都在）",
+    withMention.length === 9, "n=" + withMention.length);
+  dom2.window.close();
+
+  // ── quoteOpen=false 时默认收起 ──
+  const dom3 = freshDom("ref/topic.html", "https://www.v2ex.com/t/1241734",
+    { "v2cx:settings": JSON.stringify({ quoteOpen: false }) });
+  await new Promise((r) => setTimeout(r, 250));
+  const q3 = dom3.window.document.querySelectorAll(".v2cx-quote");
+  check(name, "quoteOpen=false 时默认收起",
+    q3.length > 0 && [...q3].every((x) => !x.classList.contains("open")), "n=" + q3.length);
+  check(name, "收起时头部仍然显示引用的是谁",
+    q3.length > 0 && /^引用 /.test(q3[0].querySelector(".v2cx-quote-title").textContent.trim()));
+  dom3.window.close();
+
+  dom.window.close();
+}
+
 /** 浅色模式：预置 localStorage 后重跑，验证 class 与 token 切换 */
 async function runLightModeCase() {
   const name = "浅色模式";
@@ -1096,6 +1230,7 @@ async function runFallbackCase() {
   try { await runImageCase(); } catch (e) { check("图片缩略图", "测试自身未崩溃", false, String(e)); }
   try { await runContrastCase(); } catch (e) { check("可读性对比度", "测试自身未崩溃", false, String(e)); }
   try { await runSettingsCase(); } catch (e) { check("设置面板", "测试自身未崩溃", false, String(e)); }
+  try { await runQuoteCase(); } catch (e) { check("楼中楼引用", "测试自身未崩溃", false, String(e)); }
   try { await runSettingsMigrationCase(); } catch (e) { check("设置迁移", "测试自身未崩溃", false, String(e)); }
   try { await runResizerCase(); } catch (e) { check("拖拽调宽", "测试自身未崩溃", false, String(e)); }
   try { await runLightModeCase(); } catch (e) { check("浅色模式", "测试自身未崩溃", false, String(e)); }

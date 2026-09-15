@@ -214,6 +214,14 @@ function demoScript(url) {
     }, 300);<\/script>`;
   }
 
+  if (demo === "quotes") {
+    // 滚到第一张引用卡片
+    return `<script>setTimeout(function(){
+      var q = document.querySelector(".v2cx-quote");
+      if (q) q.scrollIntoView({ block: "center" });
+    }, 300);<\/script>`;
+  }
+
   if (demo === "settings") {
     return `<script>setTimeout(function(){
       var b = document.querySelector("[data-settings-open]");

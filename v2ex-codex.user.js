@@ -95,6 +95,12 @@
     /** 详情页的思考块是否默认展开 */
     detailThinkingOpen: true,
 
+    /* —— 楼中楼引用 —— */
+    /** 把「@某人」的回复渲染成引用卡片（显示引用的是哪一楼、内容和跳转） */
+    quoteCard: true,
+    /** 引用卡片的正文默认展开 */
+    quoteOpen: true,
+
     /* —— 正文图片 —— */
     /** 缩略图尺寸上限 */
     thumbWidth: 260,
@@ -247,6 +253,7 @@
     check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
     copy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`,
     branch: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="6" r="2.4"/><circle cx="6.5" cy="18" r="2.4"/><circle cx="17.5" cy="8.5" r="2.4"/><path d="M6.5 8.4v7.2"/><path d="M17.5 10.9c0 3.4-3.6 3.3-6.3 4.1"/></svg>`,
+    quote: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.6 6.2C6.6 7.6 5 10 5 13.3V18h5.3v-5.3H7.9c0-2 .9-3.4 2.7-4.3L9.6 6.2Zm9 0C15.6 7.6 14 10 14 13.3V18h5.3v-5.3h-2.4c0-2 .9-3.4 2.7-4.3L18.6 6.2Z"/></svg>`,
     sparkle: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2l1.9 5.6 5.6 1.9-5.6 1.9L12 17.2l-1.9-5.6L4.5 9.7l5.6-1.9L12 2.2Z"/><path d="M18.4 15.6l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z"/><path d="M5.6 14.4l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7.7-1.9Z"/></svg>`,
     heart: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 5.6a5.4 5.4 0 0 0-7.7 0L12 6.7l-1.1-1.1a5.4 5.4 0 0 0-7.7 7.7l1.1 1.1L12 21.6l7.7-7.7 1.1-1.1a5.4 5.4 0 0 0 0-7.7Z"/></svg>`,
     star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="m12 3.6 2.6 5.3 5.9.9-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.8l5.9-.9L12 3.6Z"/></svg>`,
@@ -489,6 +496,19 @@
 
   /* ============================== 解析：V2EX DOM → 数据 ============================== */
 
+  /**
+   * 拆掉回复正文开头的 "@某人"。
+   * V2EX 没有结构化的引用节点，楼中楼就是正文以
+   *   @<a href="/member/xxx">xxx</a> 内容…
+   * 开头。这里把这段前缀摘出来，剩下的正文交给引用卡片去承载。
+   * 摘不出来（不是 @ 开头）就原样返回。
+   */
+  function splitMention(html) {
+    const m = String(html || "").match(/^\s*@<a href="\/member\/([^"]+)"[^>]*>([^<]+)<\/a>\s*/);
+    if (!m) return { html: html || "", mention: null };
+    return { html: String(html).slice(m[0].length), mention: { slug: m[1], name: m[2] } };
+  }
+
   const parse = {};
 
   /** 通用话题行解析：任何含 .item_title a.topic-link 的 div.cell 都算
@@ -659,6 +679,11 @@
       const ago = cell.querySelector("span.ago");
       const contentEl = cell.querySelector(".reply_content");
       const badges = Array.from(cell.querySelectorAll(".badges .badge")).map((b) => txt(b));
+      const raw = contentEl ? contentEl.innerHTML : "";
+      // V2EX 的「楼中楼」就是回复正文以 "@<a href=/member/X>X</a>" 开头。
+      // 两个版本都留着：html 是摘掉 @ 的（给引用卡片用），
+      // htmlRaw 是原文 —— 不开引用卡片、或解析不到引用目标时要用它，否则 @ 就丢了。
+      const split = splitMention(raw);
       out.push({
         id: idM ? idM[1] : "",
         floor: txt(cell.querySelector(".no")),
@@ -667,7 +692,9 @@
         timeIso: isoFromTitle(attr(ago, "title")),
         timeText: txt(ago),
         via: (txt(ago).match(/via\s+(.+)$/i) || [])[1] || "",
-        html: contentEl ? contentEl.innerHTML : "",
+        html: split.html,
+        htmlRaw: raw,
+        mention: split.mention,
         badges,
         isOp: badges.some((b) => /^OP$/i.test(b))
       });
@@ -2196,6 +2223,82 @@
     @keyframes v2cx-blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
     @media (prefers-reduced-motion: reduce) { .v2cx-boss-caret { animation: none; } }
 
+    /* ---------- 楼中楼引用卡片 ---------- */
+    .v2cx-quote {
+      margin: 0 0 10px;
+      border: 1px solid var(--cx-border);
+      border-left: 3px solid var(--cx-border-strong);
+      border-radius: 8px;
+      background: var(--cx-wash);
+      overflow: hidden;
+    }
+    .v2cx-quote-head {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--cx-text-dim);
+      cursor: pointer;
+      user-select: none;
+    }
+    .v2cx-quote-head:hover { color: var(--cx-text-secondary); }
+    .v2cx-quote-ic { display: inline-flex; flex: none; }
+    .v2cx-quote-ic svg { width: 13px; height: 13px; display: block; }
+    .v2cx-quote-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .v2cx-quote-title b { color: var(--cx-text); font-weight: 600; }
+    .v2cx-quote-jump {
+      margin-left: auto;
+      flex: none;
+      border: none;
+      background: none;
+      padding: 2px;
+      border-radius: 5px;
+      cursor: pointer;
+      color: var(--cx-text-faint);
+      display: grid;
+      place-items: center;
+    }
+    .v2cx-quote-jump:hover { background: var(--cx-btn-hover); color: var(--cx-blue); }
+    .v2cx-quote-jump svg { width: 12px; height: 12px; }
+    .v2cx-quote-chev { flex: none; font-size: 10px; color: var(--cx-text-faint); }
+    .v2cx-quote.open .v2cx-quote-chev::after { content: "\25be"; }
+    .v2cx-quote:not(.open) .v2cx-quote-chev::after { content: "\25b8"; }
+    .v2cx-quote-body {
+      padding: 8px 10px 9px;
+      border-top: 1px solid var(--cx-border-soft);
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--cx-text-secondary);
+      overflow-wrap: anywhere;
+    }
+    .v2cx-quote:not(.open) .v2cx-quote-body { display: none; }
+    /* 展开时长引用限个高度，超了内部滚动，别把整屏占满 */
+    .v2cx-quote.open .v2cx-quote-body { max-height: 260px; overflow: auto; }
+    .v2cx-quote-body img { display: none; }
+    .v2cx-quote-img {
+      display: inline-block;
+      font-size: 11.5px;
+      color: var(--cx-text-faint);
+      background: var(--cx-chip-bg);
+      border-radius: 5px;
+      padding: 1px 6px;
+      margin: 0 2px;
+    }
+    .v2cx-quote-body code {
+      font-family: var(--cx-font-mono);
+      font-size: 12px;
+      background: var(--cx-bg-inset);
+      border-radius: 4px;
+      padding: 1px 4px;
+    }
+    /* 跳到源楼层时闪一下，方便定位 */
+    .v2cx-turn.v2cx-flash { animation: v2cx-flash 1.2s ease-out; }
+    @keyframes v2cx-flash {
+      0%, 20% { background: var(--cx-blue-soft); }
+      100% { background: transparent; }
+    }
+
     /* ================= 设置面板 ================= */
     .v2cx-modal {
       position: fixed;
@@ -2461,6 +2564,8 @@
       if (!faviconObserver) {
         faviconObserver = new MutationObserver(() => {
           if (faviconBusy) return;
+          // 页面正在销毁 / 已进 bfcache 时 head 可能已经没了，直接跳过
+          if (!document.head) return;
           const want = makeFaviconUri();
           const cur = document.getElementById(FAVICON_ID);
           if (want && (!cur || cur.getAttribute("href") !== want)) applyFavicon();
@@ -2953,6 +3058,20 @@
         main.classList.toggle("filters-open");
         return;
       }
+      // 引用卡片：跳到源楼层（点在按钮上时不折叠）
+      const jump = t.closest("[data-jump-floor]");
+      if (jump) {
+        e.preventDefault();
+        jumpToFloor(jump.dataset.jumpFloor);
+        return;
+      }
+      // 引用卡片展开 / 折叠
+      const quoteHead = t.closest(".v2cx-quote-head");
+      if (quoteHead) {
+        quoteHead.closest(".v2cx-quote")?.classList.toggle("open");
+        return;
+      }
+
       // 思考块展开 / 折叠
       const thinkHead = t.closest(".v2cx-think-head");
       if (thinkHead) {
@@ -3456,6 +3575,81 @@
     });
   }
 
+  /**
+   * 把一批回复里的「@某人」解析成引用目标。
+   *
+   * 返回 floor → { floor, username, html } 的映射：
+   *   - 找「该用户在此楼之前最后一次发言」那一楼（V2EX 的楼中楼基本都是回最近那条）
+   *   - 如果提到的是楼主、且楼主此前没发过回复，就指向主题正文（label 用「楼主」）
+   * 解析不到的返回 null，调用方就保留原文里的 @，不丢信息。
+   */
+  function resolveMentions(topic, replies) {
+    const map = new Map();
+    if (!topic) return map;
+
+    const opAuthor = topic.author || "";
+    const opHtml = topic.contentHtml || "";
+    const lastByUser = new Map(); // username → { floor, username, html }
+
+    replies.forEach((p) => {
+      const men = p.mention;
+      if (men) {
+        const key = p.floor;
+        // 优先同名回复；比对不上再用 slug（显示名和 URL 名理论上一致，但不硬依赖）
+        let hit = lastByUser.get(men.name);
+        if (!hit) {
+          for (const [name, v] of lastByUser) {
+            if (name.toLowerCase() === men.name.toLowerCase()) { hit = v; break; }
+          }
+        }
+        if (hit) map.set(key, hit);
+        else if (opAuthor && men.name.toLowerCase() === opAuthor.toLowerCase()) {
+          map.set(key, { floor: "", username: opAuthor, html: opHtml, isOp: true });
+        }
+      }
+      lastByUser.set(p.username, { floor: p.floor, username: p.username, html: p.html });
+    });
+
+    return map;
+  }
+
+  /** 引用卡片：头部「引用 N 楼 · 用户名」+ 可折叠的原文 + 跳转按钮 */
+  function quoteHtml(target) {
+    // 引用里的图片不重复显示（原楼层已经有了），换个占位标记
+    const body = String(target.html || "")
+      .replace(/<img\b[^>]*>/gi, '<span class="v2cx-quote-img">[图片]</span>');
+    const label = target.isOp
+      ? "楼主"
+      : '<b>' + escapeHtml(target.floor) + "</b> 楼";
+    return '<div class="v2cx-quote' + (cfg("quoteOpen") ? " open" : "") + '">' +
+      '<div class="v2cx-quote-head">' +
+      '<span class="v2cx-quote-ic">' + ic("quote") + "</span>" +
+      '<span class="v2cx-quote-title">引用 ' + label + " · " + escapeHtml(target.username) + "</span>" +
+      (target.floor
+        ? '<button type="button" class="v2cx-quote-jump" data-jump-floor="' + escapeHtml(target.floor) +
+          '" title="跳到该楼层">' + ic("external") + "</button>"
+        : "") +
+      '<span class="v2cx-quote-chev"></span>' +
+      "</div>" +
+      '<div class="v2cx-quote-body">' + body + "</div>" +
+      "</div>";
+  }
+
+  /** 滚到某一楼并闪一下；找不到就退化成 #replyN 锚点 */
+  function jumpToFloor(floor) {
+    const node = document.getElementById("reply" + floor);
+    if (!node) { location.hash = "#reply" + floor; return; }
+    // jsdom 之类的环境没实现 scrollIntoView，别让整个点击处理器炸掉
+    if (typeof node.scrollIntoView === "function") {
+      node.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    const turn = node.closest(".v2cx-turn") || node;
+    turn.classList.remove("v2cx-flash");
+    void turn.offsetWidth; // 强制重排，保证连点同一条也能重放动画
+    turn.classList.add("v2cx-flash");
+    setTimeout(() => turn.classList.remove("v2cx-flash"), 1300);
+  }
+
   /* ---------- 详情视图 ---------- */
 
   /**
@@ -3601,10 +3795,12 @@
         </div>
       </div>`).join("");
 
+    const mentionMap = cfg("quoteCard") ? resolveMentions(t, t.replies) : new Map();
     const turns = t.replies.map((p) => `
       <div class="v2cx-turn">
         <div class="v2cx-turn-agent" id="reply${escapeHtml(p.floor)}" data-floor="${escapeHtml(p.floor)}">
-          <div class="v2cx-cooked">${cleanContent(p.html)}</div>
+          ${mentionMap.has(p.floor) ? quoteHtml(mentionMap.get(p.floor)) : ""}
+          <div class="v2cx-cooked">${cleanContent(mentionMap.has(p.floor) ? p.html : (p.htmlRaw || p.html))}</div>
         </div>
         <div class="v2cx-worked">
           <span class="v2cx-floor">${escapeHtml(p.floor)}</span>
@@ -4857,6 +5053,11 @@
       { key: "listThinkingOpen", type: "toggle", label: "列表思考块默认展开",
         hint: "关掉时只占一行「✻ Worked for Ns ▸」，点一下展开" },
       { key: "detailThinkingOpen", type: "toggle", label: "详情页思考块默认展开" }
+    ] },
+    { section: "楼中楼", items: [
+      { key: "quoteCard", type: "toggle", label: "把「@某人」渲染成引用卡片",
+        hint: "V2EX 的楼中楼就是回复开头 @对方。开启后会在回复上方显示引用的是哪一楼、内容摘要，可折叠、可跳转" },
+      { key: "quoteOpen", type: "toggle", label: "引用卡片默认展开" }
     ] },
     { section: "正文图片", items: [
       { key: "thumbWidth", type: "range", label: "缩略图宽度上限", min: 120, max: 600, step: 10, unit: "px" },

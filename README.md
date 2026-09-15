@@ -33,8 +33,8 @@
 ## 安装
 
 1. 安装 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 新建脚本，把 `v2ex-codex.user.js` 粘进去（或直接把文件拖进浏览器）。
-3. 打开 https://www.v2ex.com/ 。
+2. 打开 [hupu-codex.user.js](https://github.com/George11811/v2ex-codex/blob/main/v2ex-codex.user.js)，点 Raw 后安装。
+3. 访问 https://www.v2ex.com/ 。
 
 ## 长什么样
 

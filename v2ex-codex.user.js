@@ -3,7 +3,7 @@
 // @namespace    https://www.v2ex.com/
 // @version      1.0.0
 // @description  把 V2EX 换成 Codex 桌面 app 风格（左 rail + 主区 + 右侧代码面板，明暗双模式）。仅改变外观，保留站点原有内容与交互。
-// @author       port of "Linux DO · Codex 外观" by czm15053
+// @author       link
 // @match        https://www.v2ex.com/*
 // @match        https://v2ex.com/*
 // @icon         https://www.v2ex.com/static/icon-192.png

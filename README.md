@@ -8,7 +8,7 @@
 - **应急伪装键**：一下把整个视口变成「代码编辑器 + 正在跑测试的终端」
 - 底部输入框带 markdown 工具条、实时预览、草稿自动保存
 
-> 移植自 [Linux DO · Codex 外观](https://github.com/czm15053/linuxdo-idea-ui)，作者 @czm15053。。配色 token、三栏结构、思考块、
+> 移植自 [Linux DO · Codex 外观](https://github.com/czm15053/linuxdo-idea-ui)，作者 [@czm15053](https://github.com/czm15053)。。配色 token、三栏结构、思考块、
 > hover 胶囊、底部输入框等设计都源自那个脚本，本仓库是把它重新实现到 V2EX 的
 > 服务端渲染 DOM 上。详见 [授权与致谢](#授权与致谢)。
 

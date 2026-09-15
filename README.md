@@ -34,7 +34,11 @@
 
 1. 安装 [Tampermonkey](https://www.tampermonkey.net/)。
 2. 打开 [hupu-codex.user.js](https://github.com/George11811/v2ex-codex/blob/main/v2ex-codex.user.js)，点 Raw 后安装。
+<<<<<<< HEAD
 3. 访问 https://www.v2ex.com/ 。
+=======
+3. 打开 https://www.v2ex.com/ 。
+>>>>>>> 56ab3c3f02258c1f3a0c01036556acb9213aefb2
 
 ## 长什么样
 

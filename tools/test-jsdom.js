@@ -41,6 +41,19 @@ function stripScripts(html) {
     .replace(/<link[^>]+rel="stylesheet"[^>]*>/gi, "");
 }
 
+/**
+ * jsdom 的 getComputedStyle 不会把 `var()` 解析成最终值（真浏览器会），
+ * 只把它原样返回。这里手动解析一层，等价于浏览器里的计算结果 ——
+ * 用来断言「CSS 规则真的作用到了这个元素上」，而不只是规则存在于样式表里。
+ */
+function resolveComputed(win, node) {
+  const raw = String(win.getComputedStyle(node).opacity);
+  const m = raw.match(/^var\(\s*(--[\w-]+)\s*(?:,\s*([^)]+))?\)$/);
+  if (!m) return raw;
+  const v = win.document.documentElement.style.getPropertyValue(m[1]).trim();
+  return v || (m[2] || "").trim();
+}
+
 async function runCase(c) {
   const html = stripScripts(fs.readFileSync(path.join(ROOT, c.file), "utf8"));
   const vc = new VirtualConsole();
@@ -857,16 +870,19 @@ async function runSettingsCase() {
   check(name, "面板有 dialog 语义", !!m.querySelector('[role="dialog"][aria-modal="true"]'));
 
   // ── 控件齐全（数字写死是为了让「往 SPEC 里加东西忘了渲染」立刻暴露）──
-  check(name, "开关 8 个", m.querySelectorAll("[data-set-toggle]").length === 8,
+  check(name, "开关 11 个", m.querySelectorAll("[data-set-toggle]").length === 11,
     "n=" + m.querySelectorAll("[data-set-toggle]").length);
-  check(name, "滑块 6 个", m.querySelectorAll("[data-set-range]").length === 6,
+  check(name, "滑块 7 个", m.querySelectorAll("[data-set-range]").length === 7,
     "n=" + m.querySelectorAll("[data-set-range]").length);
   check(name, "下拉 5 个", m.querySelectorAll("[data-set-select]").length === 5,
     "n=" + m.querySelectorAll("[data-set-select]").length);
   check(name, "文本框 2 个", m.querySelectorAll("[data-set-text]").length === 2,
     "n=" + m.querySelectorAll("[data-set-text]").length);
-  check(name, "分了 5 个分组", m.querySelectorAll(".v2cx-set-section").length === 5,
+  check(name, "分了 6 个分组", m.querySelectorAll(".v2cx-set-section").length === 6,
     "n=" + m.querySelectorAll(".v2cx-set-section").length);
+  check(name, "有「页面不透明度」滑杆", !!m.querySelector('[data-set-range="pageOpacity"]'));
+  check(name, "有「侧边栏模式」开关", !!m.querySelector('[data-set-toggle="sidebarMode"]'));
+  check(name, "有「鼠标回来自动恢复」开关", !!m.querySelector('[data-set-toggle="sidebarAutoRestore"]'));
   check(name, "每个控件都有 label",
     [...m.querySelectorAll(".v2cx-set-row")].every((r) => r.querySelector(".v2cx-set-label span")));
 
@@ -912,6 +928,81 @@ async function runSettingsCase() {
     doc.documentElement.style.getPropertyValue("--cx-rail-w"));
   rw.dispatchEvent(new win.Event("change", { bubbles: true }));
   check(name, "宽度落盘", stored().railWidth === 420);
+
+  // ── 页面不透明度滑杆 ──
+  // 默认 100% = 不调暗：变量是 1，且不加 v2cx-page-dim（加了才会让 CSS 规则生效）
+  check(name, "不透明度默认变量 = 1",
+    doc.documentElement.style.getPropertyValue("--v2cx-page-opacity") === "1",
+    doc.documentElement.style.getPropertyValue("--v2cx-page-opacity"));
+  check(name, "100% 时不加 v2cx-page-dim",
+    !doc.documentElement.classList.contains("v2cx-page-dim"));
+
+  const po = m.querySelector('[data-set-range="pageOpacity"]');
+  check(name, "滑杆区间 40~100 / 步长 5",
+    po.min === "40" && po.max === "100" && po.step === "5",
+    po.min + "-" + po.max + "/" + po.step);
+  po.value = "70";
+  po.dispatchEvent(new win.Event("input", { bubbles: true }));
+  check(name, "拖动即时改 --v2cx-page-opacity（百分比 → 0~1）",
+    doc.documentElement.style.getPropertyValue("--v2cx-page-opacity") === "0.7",
+    doc.documentElement.style.getPropertyValue("--v2cx-page-opacity"));
+  check(name, "拖动即时加 v2cx-page-dim",
+    doc.documentElement.classList.contains("v2cx-page-dim"));
+  check(name, "拖动中不写存储",
+    stored().pageOpacity !== 70, String(stored().pageOpacity));
+  check(name, "拖动时读数跟着走",
+    (m.querySelector('[data-set-val="pageOpacity"]') || {}).textContent === "70%",
+    (m.querySelector('[data-set-val="pageOpacity"]') || {}).textContent);
+
+  po.dispatchEvent(new win.Event("change", { bubbles: true }));
+  check(name, "松手落盘 pageOpacity", stored().pageOpacity === 70, String(stored().pageOpacity));
+
+  // CSS 侧：页面层吃变量、浮层不吃
+  const opCss = (doc.getElementById("v2ex-codex-theme") || {}).textContent || "";
+  const dimRule = opCss.match(/html\.v2cx\.v2cx-page-dim \.v2cx-rail,[\s\S]*?\{/);
+  check(name, "dim 规则覆盖脚本自绘的 rail / main（由 PAGE_LAYER_SELECTOR 生成）",
+    !!dimRule &&
+    /\.v2cx-rail/.test(dimRule[0]) && /\.v2cx-main\b/.test(dimRule[0]),
+    dimRule ? dimRule[0].replace(/\s+/g, " ").slice(0, 90) : "无");
+  // 滑杆只该调脚本自绘的界面，不该顺手把 V2EX 自己的页面也调淡
+  check(name, "dim 规则不含原生页面（#Top/#Wrapper/#Bottom）",
+    !!dimRule && !/#Top/.test(dimRule[0]) && !/#Wrapper/.test(dimRule[0]) && !/#Bottom/.test(dimRule[0]));
+  check(name, "dim 规则用 CSS 变量",
+    /v2cx-page-dim[\s\S]{0,400}\{\s*opacity:\s*var\(--v2cx-page-opacity,\s*1\)/.test(opCss));
+  // 伪装视图的职责就是遮住论坛，自己半透明会让底下的内容透上来
+  check(name, "伪装视图不在 dim 名单里（伪装不打折）",
+    !!dimRule && !/\.v2cx-boss/.test(dimRule[0]));
+  // 光有规则还不够：规则得真的落到页面层元素上（计算值能解析成 0.7）
+  check(name, "rail 计算出的 opacity = 0.7",
+    resolveComputed(win, doc.querySelector(".v2cx-rail")) === "0.7",
+    resolveComputed(win, doc.querySelector(".v2cx-rail")));
+  check(name, "主区计算出的 opacity = 0.7",
+    resolveComputed(win, doc.querySelector(".v2cx-main")) === "0.7",
+    resolveComputed(win, doc.querySelector(".v2cx-main")));
+  check(name, "设置面板不受影响（永远是 1）",
+    resolveComputed(win, m.querySelector(".v2cx-modal-card")) === "1",
+    resolveComputed(win, m.querySelector(".v2cx-modal-card")));
+  check(name, "页面层子元素不重复相乘（子元素仍是 1）",
+    win.getComputedStyle(doc.querySelector(".v2cx-rail-brand-name")).opacity === "1",
+    win.getComputedStyle(doc.querySelector(".v2cx-rail-brand-name")).opacity);
+  check(name, "浮层（设置面板 / 灯箱 / toast）不在 dim 名单里",
+    !!dimRule && !/\.v2cx-modal/.test(dimRule[0]) && !/\.v2cx-lightbox/.test(dimRule[0]) && !/\.v2cx-toast/.test(dimRule[0]));
+
+  // 原生页面（未接管路由下才可见的那三块）不跟着变淡 —— 滑杆只管脚本自绘的界面
+  check(name, "原生页面不被调淡（#Wrapper 仍是 1）",
+    win.getComputedStyle(doc.querySelector("#Wrapper")).opacity === "1",
+    win.getComputedStyle(doc.querySelector("#Wrapper")).opacity);
+
+  // 调回 100%：这条改完不该再留着 dim 类（不然页面会一直是半透明）
+  po.value = "100";
+  po.dispatchEvent(new win.Event("input", { bubbles: true }));
+  po.dispatchEvent(new win.Event("change", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 60));
+  check(name, "调回 100% 后去掉 v2cx-page-dim",
+    !doc.documentElement.classList.contains("v2cx-page-dim"));
+  check(name, "调回 100% 后变量 = 1",
+    doc.documentElement.style.getPropertyValue("--v2cx-page-opacity") === "1");
+  check(name, "调回 100% 后落盘", stored().pageOpacity === 100, String(stored().pageOpacity));
 
   // ── 下拉 ──
   const themeSel = m.querySelector('[data-set-select="theme"]');
@@ -1150,6 +1241,227 @@ async function runQuoteCase() {
   dom.window.close();
 }
 
+/**
+ * 侧边栏模式：鼠标离开页面区域自动伪装 / 回来自动恢复。
+ * 独立于「隐蔽性」用例（那个跑默认设置），这里专门开 sidebarMode。
+ */
+async function runSidebarModeCase() {
+  const name = "侧边栏模式";
+  console.log(`\n──── ${name} ────`);
+  const dom = freshDom("ref/topic.html", "https://www.v2ex.com/t/1241734",
+    { "v2cx:settings": JSON.stringify({ sidebarMode: true }) });
+  const win = dom.window, doc = win.document;
+  await new Promise((r) => setTimeout(r, 250));
+
+  const root = doc.documentElement;
+  const bossOn = () => root.classList.contains("v2cx-boss-on");
+  // 页面内部移动：真浏览器里 mouseleave 的 relatedTarget 会是页面内那个元素
+  // （用 mouseout 是测不到守卫的，事件类型都不一样 —— 这里必须用 mouseleave）
+  const leaveToNode = () => root.dispatchEvent(new win.MouseEvent("mouseleave",
+    { bubbles: true, relatedTarget: doc.body }));
+  // relatedTarget 为空 = 真的移出页面区域（浏览器地址栏 / 别的窗口）
+  const leaveWindow = () => root.dispatchEvent(new win.MouseEvent("mouseleave",
+    { bubbles: true, relatedTarget: null }));
+  const enterWindow = () => root.dispatchEvent(new win.MouseEvent("mouseenter", { bubbles: true }));
+  // 离开后有 160ms 迟滞（用来滤掉划过跨源 iframe 的假离开），断言前要等它到点
+  const waitLeave = () => new Promise((r) => setTimeout(r, 220));
+
+  check(name, "已开启 sidebarMode（预置设置被读到，且页面正常渲染）",
+    !!doc.querySelector(".v2cx-main"));
+  check(name, "初始没有伪装", !bossOn());
+
+  leaveToNode();
+  await waitLeave();
+  check(name, "页面内部移动不触发伪装（relatedTarget 非空被挡）", !bossOn());
+
+  // 迟滞：离开后马上回来，这次「离开」应当被取消
+  leaveWindow();
+  enterWindow();
+  await waitLeave();
+  check(name, "离开后立刻回来 → 不伪装（迟滞把假离开吃掉）", !bossOn());
+
+  leaveWindow();
+  await waitLeave();
+  check(name, "鼠标离开页面区域 → 自动伪装", bossOn());
+  check(name, "自动伪装时隐藏 rail/main（和 Esc² 同一个视图）",
+    win.getComputedStyle(doc.querySelector(".v2cx-rail")).visibility === "hidden");
+  check(name, "自动伪装建立了伪装视图", !!doc.querySelector(".v2cx-boss"));
+
+  leaveWindow(); // 重复离开不应出错
+  await waitLeave();
+  check(name, "重复离开仍是伪装态", bossOn());
+
+  enterWindow();
+  check(name, "鼠标回到页面 → 自动恢复", !bossOn());
+  check(name, "恢复后伪装视图隐藏",
+    !doc.querySelector(".v2cx-boss") ||
+    win.getComputedStyle(doc.querySelector(".v2cx-boss")).display === "none");
+
+  // ── 手动进的伪装，鼠标碰页面不该把它弹出来 ──
+  const esc = () => win.dispatchEvent(new win.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  esc(); esc();
+  check(name, "手动 Esc² 打开伪装", bossOn());
+  enterWindow();
+  check(name, "鼠标回到页面不撤手动打开的伪装", bossOn());
+  leaveWindow();
+  await waitLeave();
+  enterWindow();
+  check(name, "手动伪装仍在（侧边栏模式不会误恢复）", bossOn());
+  esc(); esc();
+  check(name, "手动再按 Esc² 关闭，不会被自动恢复打断", !bossOn());
+
+  // ── 设置面板开着时不自动伪装（否则鼠标一出去人就被锁在门外）──
+  doc.querySelector("[data-settings-open]").click();
+  check(name, "设置面板已打开", !doc.querySelector(".v2cx-modal").hidden);
+  leaveWindow();
+  await waitLeave();
+  check(name, "面板开着时不自动伪装", !bossOn());
+  enterWindow();
+  // ── 关掉开关后就不再自动伪装 ──
+  doc.querySelector("[data-set-toggle='sidebarMode']").click();
+  await new Promise((r) => setTimeout(r, 60));
+  check(name, "关掉开关已落盘",
+    JSON.parse(win.localStorage.getItem("v2cx:settings")).sidebarMode === false);
+  doc.querySelector("[data-settings-close]").click();
+  leaveWindow();
+  await waitLeave();
+  check(name, "关掉开关后不再自动伪装", !bossOn());
+
+  // ── 第二个触发源：窗口失焦（默认不开）──
+  win.dispatchEvent(new win.Event("blur"));
+  check(name, "默认不开「切标签页也伪装」", !bossOn());
+
+  const dom2 = freshDom("ref/topic.html", "https://www.v2ex.com/t/1241734",
+    { "v2cx:settings": JSON.stringify({ sidebarMode: true, sidebarHideOnBlur: true }) });
+  await new Promise((r) => setTimeout(r, 250));
+  const win2 = dom2.window, doc2 = win2.document;
+  win2.dispatchEvent(new win2.Event("blur"));
+  check(name, "开启后窗口失焦 → 自动伪装",
+    doc2.documentElement.classList.contains("v2cx-boss-on"));
+  doc2.documentElement.dispatchEvent(new win2.MouseEvent("mouseenter", { bubbles: true }));
+  check(name, "鼠标回到页面 → 从失焦伪装里恢复",
+    !doc2.documentElement.classList.contains("v2cx-boss-on"));
+  dom2.window.close();
+
+  // ── 开关要在「运行中」也能改（blur 监听器是动态登记的，不是创建时的快照）──
+  const dom3 = freshDom("ref/topic.html", "https://www.v2ex.com/t/1241734",
+    { "v2cx:settings": JSON.stringify({ sidebarMode: true, sidebarHideOnBlur: true }) });
+  await new Promise((r) => setTimeout(r, 250));
+  const win3 = dom3.window, doc3 = win3.document;
+  const on3 = () => doc3.documentElement.classList.contains("v2cx-boss-on");
+  const blur3 = () => win3.dispatchEvent(new win3.Event("blur"));
+  blur3();
+  check(name, "（准备）blur 触发源一开始是打开的", on3());
+  doc3.documentElement.dispatchEvent(new win3.MouseEvent("mouseenter", { bubbles: true }));
+  doc3.querySelector("[data-settings-open]").click();
+  // 注意：每次点开关都会 renderSettingsPanel() 重建整张卡片，
+  // 之前 query 到的节点会变成 detach 状态（再点它不会冒泡到 document），所以每次重新查。
+  const toggleBlur = () => doc3.querySelector("[data-set-toggle='sidebarHideOnBlur']");
+  check(name, "开关初始为 on", toggleBlur().classList.contains("on"));
+  toggleBlur().click(); // 面板还开着，点开关关掉 blur 触发源
+  await new Promise((r) => setTimeout(r, 60));
+  check(name, "关掉后落盘",
+    JSON.parse(win3.localStorage.getItem("v2cx:settings")).sidebarHideOnBlur === false);
+  check(name, "面板重建后开关变成 off", !toggleBlur().classList.contains("on"));
+  win3.dispatchEvent(new win3.Event("blur"));
+  check(name, "运行中关掉后 blur 不再伪装", !on3());
+  toggleBlur().click();
+  await new Promise((r) => setTimeout(r, 60));
+  check(name, "再打开后落盘",
+    JSON.parse(win3.localStorage.getItem("v2cx:settings")).sidebarHideOnBlur === true);
+  blur3();
+  check(name, "面板开着时 blur 也照样不动手（不会把人锁在门外）", !on3());
+  doc3.querySelector("[data-settings-close]").click();
+  blur3();
+  check(name, "运行中再打开后 blur 又能伪装（不是创建时的快照）", on3());
+  dom3.window.close();
+
+  // ── 从默认（两个开关都是 false）起步，用面板把 blur 触发源打开 ──
+  // 这条专门覆盖「运行中打开开关要真的生效」：blur 监听器是按设置挂的，
+  // 只看「关掉后不再伪装」会被 settingsOpen 那条守卫掩盖成假通过。
+  const dom4 = freshDom("ref/topic.html", "https://www.v2ex.com/t/1241734");
+  await new Promise((r) => setTimeout(r, 250));
+  const win4 = dom4.window, doc4 = win4.document;
+  const on4 = () => doc4.documentElement.classList.contains("v2cx-boss-on");
+  const blur4 = () => win4.dispatchEvent(new win4.Event("blur"));
+  check(name, "默认 sidebarHideOnBlur=false", !on4());
+  blur4();
+  check(name, "默认状态下窗口失焦不伪装", !on4());
+  doc4.querySelector("[data-settings-open]").click();
+  // 开关走的是完整 applySettings()，不会重建面板 DOM（只有恢复默认才重建），
+  // 所以这里的节点引用是稳的
+  const swMode = doc4.querySelector("[data-set-toggle='sidebarMode']");
+  const swBlur = doc4.querySelector("[data-set-toggle='sidebarHideOnBlur']");
+  swMode.click();
+  await new Promise((r) => setTimeout(r, 60));
+  swBlur.click();
+  await new Promise((r) => setTimeout(r, 60));
+  const saved4 = JSON.parse(win4.localStorage.getItem("v2cx:settings"));
+  check(name, "两个开关都写进存储", saved4.sidebarMode === true && saved4.sidebarHideOnBlur === true,
+    JSON.stringify({ m: saved4.sidebarMode, b: saved4.sidebarHideOnBlur }));
+  blur4();
+  check(name, "面板开着时先不伪装", !on4());
+  doc4.querySelector("[data-settings-close]").click();
+  blur4();
+  check(name, "默认起步 → 面板里打开开关 → 失焦立刻伪装（运行中登记生效）", on4());
+  // ── Alt+Tab 回来：没有 mouseenter 也要能恢复（visibilitychange）──
+  doc4.dispatchEvent(new win4.Event("visibilitychange"));
+  check(name, "标签页重新可见 → 自动恢复", !on4());
+  dom4.window.close();
+
+  // ── 手工写坏 pageOpacity：不能把页面层算成 0（整页看不见）──
+  const dom5 = freshDom("ref/topic.html", "https://www.v2ex.com/t/1241734",
+    { "v2cx:settings": JSON.stringify({ pageOpacity: 0 }) });
+  await new Promise((r) => setTimeout(r, 250));
+  const win5 = dom5.window, doc5 = win5.document;
+  check(name, "pageOpacity=0 被收到滑杆下界 40%（不会全透明）",
+    doc5.documentElement.style.getPropertyValue("--v2cx-page-opacity") === "0.4" &&
+    doc5.documentElement.classList.contains("v2cx-page-dim"),
+    doc5.documentElement.style.getPropertyValue("--v2cx-page-opacity"));
+  dom5.window.close();
+
+  // ── sidebarAutoRestore=false：走开照藏，但不会自己回来 ──
+  const dom6 = freshDom("ref/topic.html", "https://www.v2ex.com/t/1241734",
+    { "v2cx:settings": JSON.stringify({ sidebarMode: true, sidebarAutoRestore: false }) });
+  await new Promise((r) => setTimeout(r, 250));
+  const win6 = dom6.window, doc6 = win6.document;
+  const on6 = () => doc6.documentElement.classList.contains("v2cx-boss-on");
+  const leave6 = () => doc6.documentElement.dispatchEvent(new win6.MouseEvent("mouseleave",
+    { bubbles: true, relatedTarget: null }));
+  const enter6 = () => doc6.documentElement.dispatchEvent(new win6.MouseEvent("mouseenter", { bubbles: true }));
+  const esc6 = () => win6.dispatchEvent(new win6.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  leave6();
+  await waitLeave();
+  check(name, "关掉自动恢复后，离开照样伪装", on6());
+  enter6();
+  check(name, "鼠标回来不会自动恢复", on6());
+  doc6.dispatchEvent(new win6.Event("visibilitychange"));
+  check(name, "标签页重新可见也不会自动恢复", on6());
+  esc6(); esc6();
+  check(name, "手动 Esc² 能退出（只是不自动退）", !on6());
+  esc6(); esc6();
+  check(name, "手动开着伪装时，鼠标回来也不会被撤掉", on6());
+  esc6(); esc6();
+  dom6.window.close();
+
+  // ── 关了自动恢复后，手动那次伪装不该被后续 blur 「认领」成自动触发 ──
+  const dom7 = freshDom("ref/topic.html", "https://www.v2ex.com/t/1241734",
+    { "v2cx:settings": JSON.stringify({ sidebarMode: true, sidebarHideOnBlur: true, sidebarAutoRestore: false }) });
+  await new Promise((r) => setTimeout(r, 250));
+  const win7 = dom7.window, doc7 = win7.document;
+  const on7 = () => doc7.documentElement.classList.contains("v2cx-boss-on");
+  win7.dispatchEvent(new win7.Event("blur"));
+  check(name, "（准备）blur 自动伪装", on7());
+  win7.dispatchEvent(new win7.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  win7.dispatchEvent(new win7.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  check(name, "（准备）手动 Esc² 已退出", !on7());
+  win7.dispatchEvent(new win7.Event("blur")); // 同一次离开的后续信号，必须被 once 语义挡住
+  check(name, "手动退出后，同一次离开的后续 blur 不会再把页面藏回去", !on7());
+  dom7.window.close();
+
+  dom.window.close();
+}
+
 /** 浅色模式：预置 localStorage 后重跑，验证 class 与 token 切换 */
 async function runLightModeCase() {
   const name = "浅色模式";
@@ -1227,6 +1539,7 @@ async function runFallbackCase() {
   }
   try { await runComposerCase(); } catch (e) { check("底部输入框", "测试自身未崩溃", false, String(e)); }
   try { await runStealthCase(); } catch (e) { check("隐蔽性", "测试自身未崩溃", false, String(e)); }
+  try { await runSidebarModeCase(); } catch (e) { check("侧边栏模式", "测试自身未崩溃", false, String(e)); }
   try { await runImageCase(); } catch (e) { check("图片缩略图", "测试自身未崩溃", false, String(e)); }
   try { await runContrastCase(); } catch (e) { check("可读性对比度", "测试自身未崩溃", false, String(e)); }
   try { await runSettingsCase(); } catch (e) { check("设置面板", "测试自身未崩溃", false, String(e)); }

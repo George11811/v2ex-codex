@@ -57,6 +57,13 @@
     lang: "rust",
     /** 代码面板视图："code" | "diff" */
     codeMode: "code",
+    /**
+     * 页面层不透明度（%）。100 = 完全不透明。
+     * 只作用于「页面层」= 脚本自绘的 rail + 主区（见 PAGE_LAYER_SELECTOR）。
+     * V2EX 自己的页面（未接管路由下的 #Top/#Wrapper/#Bottom）、以及伪装视图、
+     * 设置面板、灯箱这类浮层永远是 100%。
+     */
+    pageOpacity: 100,
 
     /* —— 伪装 —— */
     /**
@@ -74,6 +81,25 @@
      * 无论配成什么，Ctrl+Shift+H 始终有效。
      */
     stealthKey: "esc2",
+    /**
+     * 侧边栏模式：鼠标一离开页面区域，就自动做和「连按两下 Esc」一样的事
+     * （切进伪装视图）。鼠标回到页面上自动切回来 —— 但只撤它自己触发的那一次，
+     * 手动按 Esc² / Ctrl+Shift+H 进的伪装状态不会被鼠标带出来。
+     */
+    sidebarMode: false,
+    /**
+     * 侧边栏模式的第二个触发源：窗口失焦 / 标签页切走时也自动伪装。
+     * 独立开关 —— 有人只在「鼠标移出去」时想伪装，不想在切标签页时被切走。
+     */
+    sidebarHideOnBlur: false,
+    /**
+     * 侧边栏模式：鼠标回到页面（或标签页重新可见）时，要不要自动撤销那次自动伪装。
+     *   true  —— 鼠标走开就藏、回来就还原（默认，最省事）
+     *   false —— 走开就藏，但**不会自己回来**：得自己按 Esc² / Ctrl+Shift+H 退出。
+     *            适合「人一走开就要一直伪装着，回来也得先自己确认一下」的场景。
+     * 只影响它自己触发的那次（bossAuto），手动进的伪装本来就不归它管。
+     */
+    sidebarAutoRestore: true,
     /** 左栏品牌名。空字符串 = 由 stealth 决定（Codex / V2EX） */
     brandName: "",
     /**
@@ -121,6 +147,13 @@
   };
 
   let SETTINGS = null;
+
+  /**
+   * 侧边栏模式的控制器（bootstrap 里建一次，页面生命周期内复用）。
+   * 声明放在设置区：applyVisualSettings() 会用它做 refresh()，而那个函数
+   * 在 bootstrap / resetSettings 等早期路径上就会跑，放在后面会踩 TDZ。
+   */
+  let sidebarAutoHide = null;
 
   function loadSettings() {
     const out = Object.assign({}, DEFAULTS);
@@ -176,6 +209,46 @@
     return custom || (cfg("stealth") ? "Codex" : "V2EX");
   }
 
+  /* ---- 分层不透明度 ------------------------------------------------------
+   *
+   * 通用件 + 一层薄封装，想再挂一个不透明度滑杆（比如只调代码面板）时
+   * 只要多加一条 spec + 一段消费变量的 CSS：
+   *   - applyLayerOpacity(percent, { varName, dimClass, fallback })
+   *     写 CSS 变量、按需切 class，不碰存储、不重渲染，任何一层都能用；
+   *   - applyPageOpacity(percent) 只是它针对「页面层」的调用（变量名 =
+   *     --v2cx-page-opacity，class = DIMMED_CLASS）。
+   *
+   * 为什么走 CSS 变量而不是给每个元素写 inline style：变量写在 <html> 上，
+   * 页面层自己 `opacity: var(...)`，「哪些算一层」只有一处定义。
+   * ---------------------------------------------------------------------- */
+
+  /**
+   * 把 0–100 的不透明度作用到某一层上。
+   * 100 = 去掉 dim class（连 CSS 规则都不生效）；其余才真的调暗。
+   * 预览路径（拖滑杆）和落盘路径共用它，避免两边逻辑漂移。
+   */
+  function applyLayerOpacity(percent, opt) {
+    const o = opt || {};
+    const root = document.documentElement;
+    const pct = clampPercent(percent, o.fallback, o.min);
+    const dim = pct < 100;
+    root.style.setProperty(o.varName || "--v2cx-page-opacity", String(pct / 100));
+    root.classList.toggle(o.dimClass || DIMMED_CLASS, dim);
+    return pct;
+  }
+
+  /** 「页面层」那一层（PAGE_LAYER_SELECTOR 列的就是它） */
+  function applyPageOpacity(percent) {
+    const it = specItem("pageOpacity");
+    return applyLayerOpacity(percent, {
+      varName: "--v2cx-page-opacity",
+      dimClass: DIMMED_CLASS,
+      fallback: DEFAULTS.pageOpacity,
+      // 下界直接读滑杆的 min，不另抄一份，免得两边漂移
+      min: (it && it.min) || 0
+    });
+  }
+
   /**
    * 只改 CSS 变量 / class —— 不重渲染。
    * 拖宽度滑块时走这条，否则每动一格都重排整个列表会很卡。
@@ -187,6 +260,11 @@
     root.style.setProperty("--v2cx-thread-max", cfg("threadMaxWidth") + "px");
     root.style.setProperty("--v2cx-thumb-w", cfg("thumbWidth") + "px");
     root.style.setProperty("--v2cx-thumb-h", cfg("thumbHeight") + "px");
+    applyPageOpacity(cfg("pageOpacity"));
+    // 侧边栏模式的 blur 监听器是按设置决定挂不挂的；放在这里是因为
+    // 「任何改设置的路径」最终都会走到 applyVisualSettings()，
+    // 这样开关无论是 click 还是 change 触发的，都会重新登记一次（refresh 幂等）。
+    if (sidebarAutoHide) sidebarAutoHide.refresh();
     syncMode();
     applyFavicon();
     syncTitle();
@@ -208,6 +286,27 @@
   const ROOT_CLASS = "v2cx";            // <html> 上的激活标记
   const LIGHT_CLASS = "v2cx-light";     // 浅色模式
   const LOCK_CLASS = "v2cx-locked";     // 隐藏原生页面
+  const DIMMED_CLASS = "v2cx-page-dim"; // 页面层不透明度 < 100%（只在真的调暗时才加）
+
+  /**
+   * 「页面层」= 会被设置面板里的不透明度滑杆影响的东西。
+   *
+   * 三条规矩（加新的一层时照这个来）：
+   *   1. **只放脚本自绘的界面** —— 现在是左 rail 和主区（列表 / 主题页 / 代码面板 /
+   *      底部输入框都长在 .v2cx-main 里）。V2EX 自己的页面（未接管路由下的
+   *      #Top / #Wrapper / #Bottom）**不放进来**：那是站点的东西，滑杆叫「页面不透明度」，
+   *      但只该作用于本脚本画出来的这套 UI，不该顺手把原生页面也调淡；
+   *   2. **浮层永远不进来**：伪装视图 / 设置面板 / 灯箱 / toast 都不在这个名单里。理由：
+   *        - 伪装视图（.v2cx-boss）的职责就是「一眼扫过去不像论坛」，
+   *          它自己半透明会让底下的论坛内容透上来，伪装直接打折；
+   *        - 设置面板调暗了就找不着滑杆拖回来（toast 更是拿 opacity 做显隐的）。
+   *   3. 这里的字符串是**唯一来源**：RAW_CSS 里的规则由它拼出来，
+   *      所以 CSS 和 JS 不可能对不上（不用手抄两遍）。
+   */
+  const PAGE_LAYER_SELECTOR = [
+    ".v2cx-rail",   // 脚本自绘：左 rail
+    ".v2cx-main"    // 脚本自绘：主区（含代码面板、底部输入框）
+  ].join(", ");
 
   // 「默认宽度」——双击拖拽把手是重置回这两个值，不是重置回当前设置
   const RAIL_W = DEFAULTS.railWidth;
@@ -305,6 +404,27 @@
 
   function txt(el) {
     return el ? String(el.textContent || "").replace(/\s+/g, " ").trim() : "";
+  }
+
+  /**
+   * 把任意输入收成 [min, 100] 的整数百分比。
+   *
+   * 手工改坏 localStorage（写了 "abc" / null / "" / 5000）时不能让滑杆和
+   * CSS 变量一起崩，所以：
+   *   - null / "" / 非有限数（含 "abc"）→ 回落到 fallback；
+   *     注意 Number(null) 和 Number("") 都是 0，**不能**直接 Number() 了事，
+   *     否则坏数据会被当成「0%」这种合法值（页面层直接看不见了）；
+   *   - 低于 min 的（比如手工写 {"pageOpacity":0}）收到 min，而不是原样生效
+   *     —— 低于滑杆能调出来的最暗值，属于「数据坏了」，按最暗合法值处理；
+   *   - min 缺省 0。
+   */
+  function clampPercent(value, fallback, min) {
+    const lo = Number.isFinite(Number(min)) ? Number(min) : 0;
+    const fb = Number.isFinite(Number(fallback)) ? Number(fallback) : 100;
+    if (value === null || value === undefined || value === "") return fb;
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fb;
+    return Math.max(lo, Math.min(100, Math.round(n)));
   }
 
   function attr(el, name) {
@@ -943,6 +1063,24 @@
      */
     html.${ROOT_CLASS}:not(.${LOCK_CLASS}) #Wrapper {
       margin-left: var(--cx-rail-w) !important;
+    }
+
+    /* ---------- 页面层不透明度（设置面板 → 外观 → 页面不透明度） ----------
+     *
+     * 变量由 applyPageOpacity() 写到 <html> 上，这里只消费。
+     * 选择器不手写：下面那条规则里的占位符会在拼样式表时被替换成 JS 常量
+     * PAGE_LAYER_SELECTOR 展开后的列表 —— 「哪些算页面层」只有一处定义。
+     * （所以这段注释里别再写那个占位符的字面量，否则 replace() 会替换到注释里。）
+     *
+     * 只在 < 100% 时加 .v2cx-page-dim：恰好 100% 时连规则都不生效，
+     * 页面层就不会平白多出一层 stacking context。
+     *
+     * 浮层（伪装视图 .v2cx-boss / 设置面板 / 灯箱 / toast）故意不在名单里，
+     * 永远 100%：伪装视图自己半透明会让底下的论坛内容透上来，伪装就白做了。
+     * 别给 .v2cx-toast 补 opacity —— 它的显隐本身就是 opacity 0 → .on → 1。
+     * ------------------------------------------------------------------ */
+    PAGE_LAYER_LIST {
+      opacity: var(--v2cx-page-opacity, 1);
     }
 
     /* ================= 左 rail ================= */
@@ -2520,6 +2658,28 @@
 
   /* ============================== 基础设施 ============================== */
 
+  /**
+   * 把 RAW_CSS 变成真正注入的样式表。
+   *
+   * 目前只做一件事：把规则体里的 `Xxxxxx_PAGE_LAYER {` 占位符换成 JS 常量
+   * PAGE_LAYER_SELECTOR 展开后的选择器列表（每个选择器前补上
+   * `html.v2cx.v2cx-page-dim `），这样「哪些算页面层」只在 JS 里写一遍，
+   * CSS 不会和它漂移。
+   *
+   * 匹配时特意带上后面的 `{`：注释里可能也提到占位符名字，
+   * 不带上 `{` 的话 String.replace 会替换到第一处（注释里那处），规则就废了。
+   * 以后再有这种「一份名单、两处消费」的东西，照这个模式加占位符即可。
+   */
+  function buildCss() {
+    const pageLayerRules = PAGE_LAYER_SELECTOR
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => `html.${ROOT_CLASS}.${DIMMED_CLASS} ${s}`)
+      .join(",\n    ");
+    return RAW_CSS.replace(/PAGE_LAYER_LIST\s*\{/, () => pageLayerRules + " {");
+  }
+
   function injectStyle() {
     let style = document.getElementById(STYLE_ID);
     if (!style) {
@@ -2527,7 +2687,7 @@
       style.id = STYLE_ID;
       (document.head || document.documentElement).appendChild(style);
     }
-    style.textContent = RAW_CSS; // 始终刷新，避免旧版残留
+    style.textContent = buildCss(); // 始终刷新，避免旧版残留
   }
 
   let faviconObserver = null;
@@ -4821,10 +4981,220 @@
    * 上班摸鱼场景下真正需要的不是「好看」，而是「一眼扫过去不像论坛」：
    *   1. 标签页标题伪装成源码文件名（stealth 模式下不再出现 V2EX / 主题 字样）
    *   2. 应急伪装键：整个视口瞬间变成「代码编辑器 + 正在跑测试的终端」
+   *   3. 侧边栏模式：鼠标一离开页面区域就自动做第 2 条（见 createPageLeaveWatcher
+   *      与 createSidebarAutoHide），人走开的一瞬间页面自己变成 IDE
    *
    * 伪装视图沿用同一套 token 和同一份假代码生成器，所以切换时看起来像
    * 在同一个 IDE 里换了个面板，而不是「网页变了」。
    * ================================================================= */
+
+  /* ---- 通用：检测「鼠标是不是已经不在当前页面区域里了」 ------------------
+   *
+   * 只做检测，不做任何业务决定 —— 决定什么（伪装、暂停刷新、隐藏浮层…）
+   * 交给调用方的 onLeave / onReturn，检测这层不知道业务存在。
+   *
+   * 两个触发源，互相独立：
+   *   mouseleave —— 鼠标移出页面区域（含移到浏览器地址栏 / 书签栏）。
+   *                 必须挂在 documentElement 的捕获阶段：<html> 自己不会收到
+   *                 冒泡的 mouseout（它是冒泡链的终点），只有捕获阶段能稳定收到。
+   *                 另外只认 relatedTarget 为空（真的出页面）的那种，
+   *                 页面内部来回移动不算离开。
+   *   blur       —— 窗口失焦 / 标签页被切走（别的窗口、别的 app 顶上来了）。
+   *                 默认不监听；要不要看 `getHideOnBlur()` 的返回值（或静态的
+   *                 opts.hideOnBlur），改完调 refresh() 就生效。
+   *                 注意 host 要传 window：只有 window 的 blur 才代表「整个窗口失焦」，
+   *                 页面内的 DOM 焦点变化走的是 focusout，不会冒泡到 window。
+   *   visible    —— 标签页重新可见（visibilitychange）。这是 blur 的配套「回来」信号：
+   *                 Alt+Tab 回来时鼠标常常没跨边界，不会有 mouseenter。
+   *
+   * 返回 { destroy(), refresh() }：destroy 拆干净监听器（测试和「功能整个关掉」用），
+   * refresh 在 hideOnBlur 这种「影响监听器集合」的选项变化后重新登记。
+   * ---------------------------------------------------------------------- */
+
+  function createPageLeaveWatcher(opts) {
+    const o = opts || {};
+    const host = o.host || window;
+    const doc = o.document || document;
+    const root = doc.documentElement;
+    const onLeave = typeof o.onLeave === "function" ? o.onLeave : null;
+    const onReturn = typeof o.onReturn === "function" ? o.onReturn : null;
+    /**
+     * 要不要监听 blur。
+     * 优先用 getHideOnBlur() 现读 —— 这个开关来自设置面板（cfg()），
+     * 如果在创建时把值快照下来，之后用户改成打开，blur 永远挂不上（refresh() 也救不了）。
+     * 静态的 opts.hideOnBlur 只当没有回调时的兜底。
+     */
+    const wantBlur = () =>
+      typeof o.getHideOnBlur === "function" ? !!o.getHideOnBlur() : !!o.hideOnBlur;
+
+    const onMouseLeave = (e) => {
+      // relatedTarget 非空 = 只是移到了页面内另一个元素上，不算离开
+      if (e.relatedTarget) return;
+      if (onLeave) onLeave("mouseleave");
+    };
+    const onMouseEnter = () => {
+      if (onReturn) onReturn("mouseenter");
+    };
+    const onBlur = () => {
+      // window 的 blur = 整个窗口/标签页失去焦点（页面内的 DOM 焦点变化走的是
+      // focusout，不会冒泡到 window 上来）。所以这里不再额外判 document.hasFocus()：
+      // 那个判断在部分环境里恒为真，会把「切标签页」这个信号整个吃掉。
+      if (!wantBlur()) return;
+      if (onLeave) onLeave("blur");
+    };
+    /**
+     * 标签页重新可见 —— 这是 blur 那条路的「回来」。
+     * 只靠 mouseenter 不够：Alt+Tab 出去再回来时，指针往往一直停在页面内、
+     * 根本没跨过边界，就不会有 mouseenter，于是只能手动 Esc² 才能退出伪装。
+     */
+    const onVisibility = () => {
+      if (doc.visibilityState === "hidden" || doc.hidden) return;
+      if (onReturn) onReturn("visible");
+    };
+
+    root.addEventListener("mouseleave", onMouseLeave, true);
+    root.addEventListener("mouseenter", onMouseEnter, true);
+    doc.addEventListener("visibilitychange", onVisibility);
+    return {
+      /** 拆掉所有监听器（幂等） */
+      destroy() {
+        root.removeEventListener("mouseleave", onMouseLeave, true);
+        root.removeEventListener("mouseenter", onMouseEnter, true);
+        doc.removeEventListener("visibilitychange", onVisibility);
+        host.removeEventListener("blur", onBlur);
+      },
+      /** 开关变了吗？变了就重新登记监听器（读的是最新值，不是创建时的快照） */
+      refresh() {
+        host.removeEventListener("blur", onBlur);
+        if (wantBlur()) host.addEventListener("blur", onBlur);
+      }
+    };
+  }
+
+  /* ---- 侧边栏模式：把上面那几个信号接到 setBoss() 上 ---------------------- */
+
+  /** 本次伪装是不是「侧边栏模式」自动触发的（只有它自己触发的才自动撤） */
+  let bossAuto = false;
+
+  /**
+   * 侧边栏模式的「离开」迟滞（毫秒）。
+   * 见 createSidebarAutoHide 里的 hideSoon：用来滤掉「鼠标划过页面内跨源 iframe」
+   * 这种 relatedTarget=null 的假离开。
+   */
+  const SIDEBAR_LEAVE_DELAY = 160;
+
+  /**
+   * 现在适合自动伪装吗？
+   * 不适合的情况：功能没开 / 伪装总开关没开 / 别的 Codex 主题正在跑（本脚本在避让）/
+   * 已经在伪装里 / 设置面板开着（用户正在调设置，把页面藏起来等于把人锁在门外）。
+   */
+  function bossAutoHideAllowed() {
+    if (!cfg("sidebarMode")) return false;
+    if (!cfg("stealth")) return false;
+    if (bossOn()) return false;
+    if (settingsOpen()) return false;
+    // 本脚本在别的 Codex 主题页面上是「让位」状态（ROOT_CLASS 都没加），
+    // 这时候再弹自己的伪装视图，token 不生效、底色是错的，只会更难看。
+    if (otherThemeActive()) return false;
+    return true;
+  }
+
+  /**
+   * 侧边栏模式。
+   *
+   * 语义（写死在代码里，不额外加设置项）：
+   *   - 鼠标离开页面区域 / 窗口失焦 → 自动切进伪装视图；
+   *   - 鼠标回到页面 → 自动切回来，**但只撤它自己触发的那次**：
+   *     手动按 Esc² / Ctrl+Shift+H 进的伪装，鼠标碰一下页面就被弹出来会很吓人；
+   *   - 设置面板开着时不动手（见 bossAutoHideAllowed）。
+   *
+   * 配置全部在调用时读（cfg()），所以设置面板里一改开关，下一次鼠标移动 / 切标签页
+   * 就生效，不需要重建这个控制器。
+   */
+  function createSidebarAutoHide(env) {
+    let watcher = null;
+    let shown = false; // 「这一轮是它藏起来的」——防止重复触发和误恢复
+    let leaveTimer = 0; // 离开后的迟滞计时器（见 hideSoon）
+
+    const hide = () => {
+      if (shown || !bossAutoHideAllowed()) return;
+      shown = true;
+      setBoss(true);
+      // 必须在 setBoss 之后：setBoss 可能因为 stealth=false 直接返回。
+      // 另外只在「确实是我们切进去的」时才打标记 —— 关了「回来自动恢复」时，
+      // 用户可能在伪装里继续用鼠标（不会自动退出），这时再次离开不该把
+      // 手动那次伪装算成自动触发的。
+      if (bossOn()) bossAuto = true;
+    };
+    /**
+     * 离开页面后不立刻动手，先等一小会（SIDEBAR_LEAVE_DELAY 毫秒）。
+     *
+     * 为什么要迟滞：鼠标从 <html> 移到页面里的**跨源 iframe** 上时，浏览器拿不到
+     * relatedTarget，送来的就是「relatedTarget = null 的 mouseleave」，跟真的移出页面
+     * 一模一样 —— 从 iframe 上划过去（登录页的 reCAPTCHA、嵌入视频）就会平白弹一次伪装。
+     * 迟滞窗口内鼠标又回到页面（mouseenter / 标签页重新可见）就把这次取消掉，
+     * 对「人真的走开」这个主场景几乎无感。
+     *
+     * 只给 mouseleave 用：blur（窗口失焦 / 切标签页）是明确信号，没有 iframe 那类误报，
+     * 而且用户按了别的窗口就希望页面马上藏好，所以它走 onLeave 后立刻 hide()。
+     */
+    const hideSoon = () => {
+      if (shown || leaveTimer) return;
+      leaveTimer = setTimeout(() => {
+        leaveTimer = 0;
+        hide();
+      }, SIDEBAR_LEAVE_DELAY);
+    };
+    const cancelLeave = () => {
+      if (!leaveTimer) return;
+      clearTimeout(leaveTimer);
+      leaveTimer = 0;
+    };
+    const restore = () => {
+      cancelLeave();
+      if (!shown) return;
+      // 「回来自动恢复」可以关掉：关了以后这一轮就交给用户自己按 Esc² 退，
+      // 但 shown 仍然要清掉（表示「这轮不用再等了」），免得留下一条僵着的状态。
+      if (!cfg("sidebarAutoRestore")) {
+        shown = false;
+        return;
+      }
+      shown = false;
+      // 只有「还停在自动触发的那次伪装里」才恢复
+      if (bossOn() && bossAuto) setBoss(false);
+    };
+
+    return {
+      /** 启动（幂等）：登记 mouseleave / mouseenter / visibilitychange，并按当前设置决定要不要看 blur */
+      start() {
+        if (watcher) return;
+        watcher = createPageLeaveWatcher({
+          host: env.host,
+          document: env.document,
+          // 现读：设置面板里一改开关，refresh() 就能按新值重新登记
+          getHideOnBlur: () => cfg("sidebarHideOnBlur"),
+          // 鼠标离开要过迟滞；窗口失焦是明确信号，立刻办
+          onLeave: (reason) => (reason === "blur" ? hide() : hideSoon()),
+          onReturn: () => restore()
+        });
+        watcher.refresh();
+      },
+      /** 设置改了（比如刚打开「切换标签页时也伪装」）后重新登记 */
+      refresh() {
+        if (watcher) watcher.refresh();
+      },
+      /**
+       * 停用：拆监听器 + 取消还没到点的迟滞。
+       * 注意这里**不**去动已经切好的伪装视图 —— 「关掉功能」和「退出伪装」是两件事，
+       * 后者该按 Esc² 或走 restore。想连视图一起退就先调 restore() 再 stop()。
+       */
+      stop() {
+        cancelLeave();
+        if (watcher) watcher.destroy();
+        watcher = null;
+      }
+    };
+  }
 
   /** 标签页标题 → "<文件名> — <项目名>"，和代码面板/伪装视图保持一致 */
   function syncTitle() {
@@ -4928,7 +5298,11 @@
     if (shellEl) shellEl.textContent = "~/work/" + L.root + "-engine";
   }
 
-  /** 切换应急伪装视图。注意：只切外观，不卸载任何真实 DOM，恢复时无损失 */
+  /**
+   * 切换应急伪装视图。注意：只切外观，不卸载任何真实 DOM，恢复时无损失。
+   * 所有「进 / 出伪装」的路都走这里（应急键、侧边栏模式、启动时的纠错），
+   * 统一在这里维护 bossAuto 标记，别在调用点各自改。
+   */
   function setBoss(on) {
     if (!cfg("stealth")) return;
     const box = ensureBoss();
@@ -4937,8 +5311,10 @@
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       renderBoss();
       box.hidden = false;
+      bossAuto = false;
     } else {
       box.hidden = true;
+      bossAuto = false;
     }
     document.documentElement.classList.toggle("v2cx-boss-on", !!on);
   }
@@ -5012,13 +5388,18 @@
    * 完整重渲染；否则每动一格都要重排整个列表。
    * ================================================================= */
 
-  /** 该设置对应哪个 CSS 变量（拖拽时用来做即时预览） */
+  /**
+   * 该设置对应哪个 CSS 变量（拖拽时用来做即时预览）。
+   * 值语义只有两种：数字 → px，百分比 → 0–1（不透明度）。
+   * 需要在预览时做别的事的设置，直接在自己的 spec item 上写 preview: (v) => {...}。
+   */
   const SETTING_CSS_VAR = {
-    railWidth: "--cx-rail-w",
-    panelWidth: "--v2cx-panel-w",
-    threadMaxWidth: "--v2cx-thread-max",
-    thumbWidth: "--v2cx-thumb-w",
-    thumbHeight: "--v2cx-thumb-h"
+    railWidth: { name: "--cx-rail-w", unit: "px" },
+    panelWidth: { name: "--v2cx-panel-w", unit: "px" },
+    threadMaxWidth: { name: "--v2cx-thread-max", unit: "px" },
+    thumbWidth: { name: "--v2cx-thumb-w", unit: "px" },
+    thumbHeight: { name: "--v2cx-thumb-h", unit: "px" },
+    pageOpacity: { name: "--v2cx-page-opacity", unit: "%" }
   };
 
   const SETTING_SPEC = [
@@ -5028,6 +5409,10 @@
       { key: "railWidth", type: "range", label: "左栏宽度", min: 200, max: 520, step: 2, unit: "px" },
       { key: "panelWidth", type: "range", label: "代码面板宽度", min: 240, max: 900, step: 4, unit: "px" },
       { key: "threadMaxWidth", type: "range", label: "正文最大宽度", min: 560, max: 1100, step: 10, unit: "px" },
+      { key: "pageOpacity", type: "range", label: "页面不透明度", min: 40, max: 100, step: 5, unit: "%",
+        hint: "只调脚本自绘的界面（左栏 + 主区）。V2EX 自己的页面和伪装视图、设置面板、灯箱这类浮层始终 100%",
+        // 单独写 preview：这条要连 dim 类一起切（规则挂在 .v2cx-page-dim 上，光改变量不生效）
+        preview: (v) => applyPageOpacity(v) },
       { key: "codePanel", type: "toggle", label: "显示右侧代码面板", hint: "那块代码是假数据，纯氛围" },
       { key: "lang", type: "select", label: "代码面板语言",
         options: () => Object.keys(CODE_LANGS).map((k) => [k, CODE_LANGS[k].label]) },
@@ -5044,6 +5429,14 @@
         options: [["esc2", "连按两下 Esc"], ["f2", "F2"], ["ctrl+shift+h", "Ctrl+Shift+H"]] },
       { key: "favicon", type: "select", label: "标签页图标",
         options: [["codex", "Codex 风格圆角图标"], ["site", "保留 V2EX 原图标"]] }
+    ] },
+    { section: "侧边栏模式", items: [
+      { key: "sidebarMode", type: "toggle", label: "侧边栏模式",
+        hint: "鼠标一离开页面区域就自动伪装（和连按两下 Esc 同一个视图），鼠标回来再自动恢复；只撤它自己触发的那次，手动按出的伪装不受影响" },
+      { key: "sidebarHideOnBlur", type: "toggle", label: "切换标签页 / 窗口时也伪装",
+        hint: "在「鼠标移出页面」之外再加一个触发源：窗口失焦或标签页被切走" },
+      { key: "sidebarAutoRestore", type: "toggle", label: "鼠标回来自动恢复",
+        hint: "关掉后：走开时照样自动伪装，但鼠标回来 / 标签页切回来都不会自己退出，得自己按 Esc² 或 Ctrl+Shift+H" }
     ] },
     { section: "Agent 装饰", items: [
       { key: "decorations", type: "toggle", label: "启用 agent 装饰",
@@ -5107,10 +5500,25 @@
     if (m) m.hidden = true;
   }
 
-  /** 拖滑块时的即时预览：只改 CSS 变量，不写存储、不重渲染 */
+  /**
+   * 拖控件时的即时预览：只作用到页面上，不写存储、不重渲染整页。
+   *
+   * 通用规则：range 只要在 SETTING_CSS_VAR 里登记过就自动预览；
+   * 需要在预览时做别的事（或不做 CSS 变量）的设置，在自己那条 spec 上写
+   * preview(value) 即可 —— 加新设置不用回来改这个函数。
+   */
   function previewSetting(key, value) {
-    const varName = SETTING_CSS_VAR[key];
-    if (varName) document.documentElement.style.setProperty(varName, value + "px");
+    const it = specItem(key);
+    if (it && typeof it.preview === "function") {
+      it.preview(value);
+      return;
+    }
+    const entry = SETTING_CSS_VAR[key];
+    if (!entry) return;
+    const cssValue = entry.unit === "%"
+      ? String(clampPercent(value, DEFAULTS[key], (it && it.min) || 0) / 100)
+      : value + entry.unit;
+    document.documentElement.style.setProperty(entry.name, cssValue);
   }
 
   /**
@@ -5209,6 +5617,8 @@
         const next = !cfg(key);
         sw.classList.toggle("on", next);
         sw.setAttribute("aria-checked", next ? "true" : "false");
+        // 开关一律走完整应用（不做 visualOnly）：
+        // 伪装模式、侧边栏模式这类开关会改变绑定的行为，rail 品牌名之类也要跟着重渲染。
         setCfg(key, next);
         return;
       }
@@ -5247,10 +5657,13 @@
       if (r.dataset.setRange) {
         setCfg(r.dataset.setRange, Number(r.value));
       } else if (r.dataset.setSelect) {
+        // 应急伪装键不用重绑：bindStealthKeys 是在事件里当场读 cfg("stealthKey") 的
         setCfg(r.dataset.setSelect, r.value);
       } else if (r.dataset.setText) {
         setCfg(r.dataset.setText, r.value);
       }
+      // 「切换标签页/窗口时也伪装」改的是监听器集合，改完要让侧边栏模式重新登记
+      if (sidebarAutoHide) sidebarAutoHide.refresh();
     });
   }
 
@@ -5320,6 +5733,10 @@
     bindSettingsPanel();
     bindStealthKeys();
     bindSettingsKeys();
+
+    // 侧边栏模式：一直挂着，是否动手由 cfg() 在鼠标事件的瞬间决定
+    sidebarAutoHide = createSidebarAutoHide({ host: window, document: document });
+    sidebarAutoHide.start();
 
     domReady().then(() => {
       scheduleApply();

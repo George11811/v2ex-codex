@@ -237,6 +237,76 @@ function demoScript(url) {
     }, 300);<\/script>`;
   }
 
+  /**
+   * ?demo=measure —— 量的不是「好不好看」，而是布局有没有溢出/被切。
+   * 场景：?demo=measure（默认展开态）、?demo=measure-collapsed（点收起按钮之后）、
+   *       ?demo=measure-both（两态都量，顺序输出）。
+   * 结果写进 <pre id="v2cx-measure">，用 chrome --dump-dom 读出来。
+   */
+  if (demo === "measure" || demo === "measure-collapsed" || demo === "measure-both") {
+    return `<script>
+    (function () {
+      var out = [];
+      function box(sel) {
+        var n = document.querySelector(sel);
+        if (!n) return { sel: sel, missing: true };
+        var r = n.getBoundingClientRect();
+        var cs = getComputedStyle(n);
+        return {
+          sel: sel,
+          x: Math.round(r.left), right: Math.round(r.right), w: Math.round(r.width), h: Math.round(r.height),
+          clientW: n.clientWidth, scrollW: n.scrollWidth,
+          wrap: cs.flexWrap, display: cs.display
+        };
+      }
+      function sample(tag) {
+        var m = {
+          tag: tag,
+          win: window.innerWidth,
+          composer: box(".v2cx-composer"),
+          toolbar: box(".v2cx-composer-toolbar"),
+          edit: box(".v2cx-md-edit"),
+          status: box(".v2cx-composer-status"),
+          send: box(".v2cx-send"),
+          collapse: box("[data-composer-collapse]"),
+          collapsed: !!(document.querySelector(".v2cx-composer") || {}).classList &&
+                     document.querySelector(".v2cx-composer").classList.contains("collapsed")
+        };
+        m.buttons = [];
+        document.querySelectorAll(".v2cx-tool-btn").forEach(function (b, i) {
+          var r = b.getBoundingClientRect();
+          m.buttons.push({ i: i, tool: b.dataset.tool, x: Math.round(r.left), right: Math.round(r.right), w: Math.round(r.width) });
+        });
+        m.missingTools = 13 - m.buttons.length;
+        out.push(JSON.stringify(m));
+      }
+      function put() {
+        var pre = document.createElement("pre");
+        pre.id = "v2cx-measure";
+        pre.textContent = out.join("\\n");
+        document.body.appendChild(pre);
+      }
+      function run() {
+        var c = document.querySelector(".v2cx-composer");
+        if (!c) { out.push('{"error":"no composer"}'); put(); return; }
+        if (${JSON.stringify(demo)} === "measure-both") {
+          sample("expanded");
+          var btn = document.querySelector("[data-composer-collapse]");
+          if (btn) btn.click();
+          setTimeout(function () { sample("collapsed"); put(); }, 120);
+        } else {
+          if (${JSON.stringify(demo)} === "measure-collapsed") {
+            var b2 = document.querySelector("[data-composer-collapse]");
+            if (b2) b2.click();
+          }
+          setTimeout(function () { sample(${JSON.stringify(demo)}); put(); }, 120);
+        }
+      }
+      setTimeout(run, 400);
+    })();
+    <\/script>`;
+  }
+
   if (demo !== "1") return "";
   const text = [
     "# 已应用到 topic_cache.rs",

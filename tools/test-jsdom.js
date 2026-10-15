@@ -516,7 +516,153 @@ async function runComposerCase() {
     check(name, "回复状态有提示", st.length > 0, JSON.stringify(st));
   }
 
+  // ── 自适应：工具条不能把图标挤出卡片 ──
+  // jsdom 不做真实布局（量不到宽度），所以这里断言的是「布局规则本身」：
+  // 关键在于工具条允许换行、而且状态位是唯一可压缩项 —— 只要这两条在，
+  // 卡片再窄也只会换行，不会裁掉按钮。
+  const tb = doc.querySelector(".v2cx-composer-toolbar");
+  const tbStyle = win.getComputedStyle(tb);
+  check(name, "工具条允许换行（flex-wrap: wrap）", tbStyle.flexWrap === "wrap", tbStyle.flexWrap);
+  check(name, "工具条不设死高度", tbStyle.height === "auto" || tbStyle.height === "", tbStyle.height);
+  const toolBtns = [...doc.querySelectorAll(".v2cx-tool-btn")];
+  check(name, "工具按钮 13 个都在工具条里",
+    toolBtns.length === 13 && toolBtns.every((b) => b.parentElement === tb), "n=" + toolBtns.length);
+  check(name, "工具按钮不参与压缩（flex: none）",
+    toolBtns.every((b) => win.getComputedStyle(b).flexGrow === "0" && win.getComputedStyle(b).flexShrink === "0"));
+  const stEl = doc.querySelector(".v2cx-composer-status");
+  const stStyle = win.getComputedStyle(stEl);
+  // 状态位是唯一允许被压缩的项，且不能撑破卡片（min-width: 0）
+  check(name, "状态位可压缩且不撑破卡片",
+    stStyle.minWidth === "0px" && stStyle.flexShrink === "1",
+    stStyle.minWidth + " / shrink " + stStyle.flexShrink);
+  // 换行后状态位要排到按钮后面（order），否则会把按钮顶到第二行去
+  check(name, "状态位 order 在按钮之后",
+    Number(stStyle.order) > 0 && Number(stStyle.order) < Number(win.getComputedStyle(doc.querySelector(".v2cx-send")).order),
+    stStyle.order + " vs " + win.getComputedStyle(doc.querySelector(".v2cx-send")).order);
+
+  // ── 收起 / 展开 ──
+  const collapseBtn = doc.querySelector("[data-composer-collapse]");
+  check(name, "有收起按钮", !!collapseBtn);
+  check(name, "默认展开（无 collapsed 类）", !card.classList.contains("collapsed"));
+  check(name, "收起按钮 aria-expanded=true", collapseBtn.getAttribute("aria-expanded") === "true");
+  check(name, "收起按钮在卡片内（不会飘到别处）", collapseBtn.closest(".v2cx-composer") === card);
+
+  const beforeCollapse = edit.textContent;
+  collapseBtn.click();
+  check(name, "点一下收起", card.classList.contains("collapsed"));
+  check(name, "收起后 aria-expanded=false", collapseBtn.getAttribute("aria-expanded") === "false");
+  check(name, "收起后按钮标题变成「展开」", /展开/.test(collapseBtn.getAttribute("title") || ""),
+    collapseBtn.getAttribute("title"));
+  check(name, "收起后输入区被隐藏",
+    win.getComputedStyle(edit).display === "none", win.getComputedStyle(edit).display);
+  check(name, "收起后工具条被隐藏",
+    win.getComputedStyle(tb).display === "none", win.getComputedStyle(tb).display);
+  check(name, "收起后收起按钮自己仍然可见（否则再也展不开）",
+    win.getComputedStyle(collapseBtn).display !== "none", win.getComputedStyle(collapseBtn).display);
+  // 细条上要能看到草稿摘要，否则收起草稿就"消失"了
+  const stub = doc.querySelector("[data-composer-stub]");
+  check(name, "收起后细条可见且带草稿摘要",
+    win.getComputedStyle(stub).display === "block" && /abc|hello|@/.test(stub.textContent),
+    win.getComputedStyle(stub).display + " / " + JSON.stringify(stub.textContent));
+  // 没有草稿时细条要自述状态，而不是显示编辑区占位符（看着像个空壳）
+  const emptyStub = (() => {
+    const before = edit.textContent;
+    edit.textContent = "";
+    edit.dispatchEvent(new win.Event("input", { bubbles: true }));
+    const t = stub.textContent;
+    edit.textContent = before;
+    edit.dispatchEvent(new win.Event("input", { bubbles: true }));
+    return t;
+  })();
+  check(name, "无草稿时细条写明「已收起」而不是占位符",
+    /收起/.test(emptyStub), JSON.stringify(emptyStub));
+  // 收起后「完全看不见」的防回归：细条高度必须写死，不能靠子元素撑
+  check(name, "收起态卡片高度写死（32px，不靠子元素撑）",
+    win.getComputedStyle(card).height === "32px" && win.getComputedStyle(card).minHeight === "32px",
+    win.getComputedStyle(card).height + " / min " + win.getComputedStyle(card).minHeight);
+  check(name, "收起态卡片是 flex 且垂直居中",
+    win.getComputedStyle(card).display === "flex" && win.getComputedStyle(card).alignItems === "center",
+    win.getComputedStyle(card).display + " / " + win.getComputedStyle(card).alignItems);
+  check(name, "收起态细条自己也有显式高度",
+    win.getComputedStyle(stub).height === "16px", win.getComputedStyle(stub).height);
+  check(name, "收起态收起按钮垂直居中（不是按展开态的 top:6 定位）",
+    win.getComputedStyle(collapseBtn).top === "50%",
+    win.getComputedStyle(collapseBtn).top);
+  check(name, "收起态整卡可点（cursor: pointer，点空白也能展开）",
+    win.getComputedStyle(card).cursor === "pointer");
+  // 「收起后完全看不见」的防回归。
+  // 注意 jsdom 的 getComputedStyle 不会解析 var()（`background: var(--cx-bg-raised)`
+  // 会原样返回、甚至给 rgba(0,0,0,0)），所以这里两条路一起走：
+  //   1. 断言注入 CSS 里那两条声明本身（变量名写对）；
+  //   2. 自己从 token 块里取色值、按 WCAG 算对比度 —— 这才是"看不看得见"的判据。
+  const opCss = (doc.getElementById("v2ex-codex-theme") || {}).textContent || "";
+  const collapseRule = (opCss.match(/\.v2cx-composer\.collapsed\s*\{[\s\S]*?\}/) || [""])[0];  check(name, "收起态换用更亮的底 + 更实的描边（不再和填充同色）",
+    /background:\s*var\(--cx-bg-raised\)/.test(collapseRule) &&
+    /border-color:\s*var\(--cx-border-strong\)/.test(collapseRule),
+    collapseRule.replace(/\s+/g, " ").slice(0, 120));
+  check(name, "收起态有蓝色强调条规则（收起态唯一高对比元素）",
+    /\.v2cx-composer\.collapsed::before\s*\{[\s\S]*?background:\s*var\(--cx-blue\)/.test(opCss) &&
+    /\.v2cx-composer\.collapsed::before\s*\{[\s\S]*?width:\s*3px/.test(opCss));
+  // token 实算：卡片填充 / 强调条 / 说明文字 对页面底色的对比度
+  const darkBg = /--cx-bg:\s*(#[0-9a-f]{6})/.exec(opCss);          // 深色块（第一个）
+  const darkRaised = /--cx-bg-raised:\s*(#[0-9a-f]{6})/.exec(opCss);
+  const darkBlue = /--cx-blue:\s*(#[0-9a-f]{6})/.exec(opCss);
+  const darkDim = /--cx-text-dim:\s*(#[0-9a-f]{6})/.exec(opCss);
+  const lin = (c) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const lum = (hex) => {
+    const n = parseInt(hex.slice(1), 16);
+    return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  };
+  const ratio = (a, b) => {
+    const la = lum(a), lb = lum(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  };
+  check(name, "强调条对页面底 > 3:1（非文本对比阈值）",
+    !!darkBg && !!darkBlue && ratio(darkBlue[1], darkBg[1]) > 3,
+    darkBg && darkBlue ? `${darkBlue[1]} on ${darkBg[1]} = ${ratio(darkBlue[1], darkBg[1]).toFixed(2)}:1` : "取不到 token");
+  check(name, "细条说明文字对卡片底 >= 4.5:1（AA 正文）",
+    !!darkRaised && !!darkDim && ratio(darkDim[1], darkRaised[1]) >= 4.5,
+    darkRaised && darkDim ? `${darkDim[1]} on ${darkRaised[1]} = ${ratio(darkDim[1], darkRaised[1]).toFixed(2)}:1` : "取不到 token");
+  check(name, "收起态写进 v2cx:settings",
+    JSON.parse(win.localStorage.getItem("v2cx:settings") || "{}").composerCollapsed === true,
+    win.localStorage.getItem("v2cx:settings"));
+  // 收起只是视觉上的隐藏，草稿本身不能被动过
+  check(name, "收起不改动草稿内容", edit.textContent === beforeCollapse, JSON.stringify(edit.textContent));
+
+  // 点细条 = 展开并接着写
+  stub.click();
+  check(name, "点细条展开", !card.classList.contains("collapsed"));
+  check(name, "展开后设置里也复位",
+    JSON.parse(win.localStorage.getItem("v2cx:settings") || "{}").composerCollapsed === false,
+    win.localStorage.getItem("v2cx:settings"));
+
+  // 收起态下点楼层「回复」：要把输入框叫出来，否则用户看不到 @ 内容
+  collapseBtn.click();
+  check(name, "（准备）又收起了", card.classList.contains("collapsed"));
+  if (replyBtn) {
+    replyBtn.click();
+    check(name, "收起态点「回复」会自动展开", !card.classList.contains("collapsed"));
+  }
+
   dom.window.close();
+
+  // ── 收起态要跨刷新保持（否则每次开页面都得手点一下）──
+  const dom2 = freshDom("ref/topic.html", "https://www.v2ex.com/t/1241734",
+    { "v2cx:settings": JSON.stringify({ composerCollapsed: true }) });
+  await new Promise((r) => setTimeout(r, 250));
+  const doc2 = dom2.window.document, win2 = dom2.window;
+  const card2 = doc2.querySelector(".v2cx-composer");
+  check(name, "刷新后仍是收起态", !!card2 && card2.classList.contains("collapsed"));
+  check(name, "刷新后收起按钮 aria-expanded=false",
+    doc2.querySelector("[data-composer-collapse]").getAttribute("aria-expanded") === "false");
+  check(name, "刷新后输入区仍是隐藏的",
+    win2.getComputedStyle(doc2.querySelector("[data-compose]")).display === "none");
+  check(name, "刷新后细条本身可见（不会又变回隐形）",
+    win2.getComputedStyle(doc2.querySelector("[data-composer-stub]")).display === "block");
+  check(name, "刷新后卡片高度仍是 32px",
+    win2.getComputedStyle(doc2.querySelector(".v2cx-composer")).height === "32px",
+    win2.getComputedStyle(doc2.querySelector(".v2cx-composer")).height);
+  dom2.window.close();
 }
 
 /** 拖拽把手：位置 + 拖动写入 CSS 变量 + 双击重置 */

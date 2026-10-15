@@ -370,6 +370,103 @@ function doSomething() {
 
 ---
 
+## 底部输入框：自适应与收起
+
+这一块不是「设置面板里的设置」，但同样是**加东西时容易踩的坑**，所以单独记一笔。
+
+### 自适应：工具条为什么必须 `flex-wrap: wrap`
+
+底部输入框是个浮层卡片，宽度被 `max-width` 锁着：
+
+| 场景 | 卡片最大宽 |
+|---|---|
+| 代码面板展开（`.v2cx-main:not(.panel-hidden)`） | 500px |
+| 代码面板收起 | 600px |
+| 视口 ≤ 1160px | 600px（面板被媒体查询藏了） |
+
+工具条里是 13 个 28px 的按钮 + 状态位 + 30px 发送键。卡片再窄一点（窄窗口、
+或者用户把 rail / 代码面板拖得更宽挤掉主区），如果工具条是默认的 `nowrap`，
+超出的按钮会被直接裁掉 —— 表现就是「侧边栏下图标显示不全」。修法是两条：
+
+```css
+.v2cx-composer-toolbar {
+  display: flex;
+  flex-wrap: wrap;     /* 装不下就换行，绝不裁掉按钮 */
+  min-width: 0;
+}
+.v2cx-composer-status {
+  flex: 0 1 auto;      /* 状态位是唯一的可压缩项 */
+  order: 1;            /* 换行后排在按钮后面，不会插到按钮中间 */
+  min-width: 0;        /* 允许被压到 0，不然它会撑破卡片 */
+}
+.v2cx-tool-btn { flex: none; }   /* 按钮永远 28px 正方 */
+.v2cx-send { order: 2; }         /* 发送键永远在最后 */
+```
+
+`order` 那两条容易被忽略：DOM 顺序是「13 个按钮 → 状态位 → 发送键」，
+一旦工具条换行，不写 `order` 的话状态位会掉到第二行开头、把按钮挤成一列。
+**加新按钮时不用改任何布局代码**，wrap 会自己处理。
+
+### 收起：状态存哪、谁不能被藏
+
+- 状态键是 `DEFAULTS.composerCollapsed`（`false` = 展开）。它**不是设置面板里的控件**，
+  但仍然放进 `v2cx:settings`：这样它只有一个存储出口，也能被设置面板的「恢复默认」一起复位。
+  如果另开一个独立的 localStorage 键，就会出现「恢复默认了但输入框还是收起的」。
+- 收起靠卡片自己的 `.collapsed` + `<html>.v2cx-composer-collapsed`，
+  CSS 里把输入区 / 预览 / 回复目标条 / 工具条 / 弹层全部 `display: none !important`。
+- **收起态「看不见」是色彩问题，不是高度问题。** 第一版把成因猜成「子元素没撑起高度、
+  卡片塌掉了」，实际不是：卡片一直渲染着（约 36px），用户看到的是**一条没有轮廓、
+  也没有可读文字的东西**。三条实算（WCAG，暗色）：
+  | 元素 | 对比 | 问题 |
+  |---|---|---|
+  | 卡片填充 `--cx-composer-bg` `#2a2a2a` vs 页面底 `--cx-bg` `#181818` | 1.24:1 | 非文本图形要 3:1，卡片没有剪影 |
+  | 卡片边框 `--cx-border`（`rgba(255,255,255,.08)`）叠在 `#181818` 上 = `#2a2a2a` | **1.000:1** | 和卡片填充完全同色 —— 这个边框等于没画，是「完全看不见」最硬的一击 |
+  | 细条文字 `--cx-text-faint` `#646464` vs `#2a2a2a` | 2.43:1 | AA 正文要 4.5:1，读不出来 |
+  展开态之所以看得见，只是因为里面有 14px 的 `--cx-text` 白字和工具条图标。
+  （那三个对比度是按 token 手算的、可直接复核；**36px 是由 CSS 推出来的
+  （`padding 4+4` + `min-height 26` + `border 1+1`），不是浏览器实测值** ——
+  想实测就在本机 F12 对 `.v2cx-composer` 取 `getBoundingClientRect()`。）
+- 所以修法是**给它能算出对比的轮廓 + 能读出来的文字**，光改高度/文案都不够
+  （`--cx-border-strong` 的 0.14 白对 `#181818` 也只有 ~1.5:1，仍然不够）：
+
+  ```css
+  .v2cx-composer.collapsed {
+    box-sizing: border-box;   /* height 含边框，不会被 padding 顶出去 */
+    height: 32px;
+    min-height: 32px;         /* 顺手写死：折叠态只剩一个子元素，让它撑高度是没必要的契约 */
+    padding: 0 8px 0 12px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;          /* 整条都是「展开」的点击区 */
+    background: var(--cx-bg-raised);        /* #242424：和页面底拉开一档 */
+    border-color: var(--cx-border-strong);  /* 不再是「和填充同色」的假边框 */
+  }
+  /* 左缘强调条：整个收起态里唯一对页面底真正过 3:1 的元素 */
+  .v2cx-composer.collapsed::before {
+    content: ""; position: absolute; left: 5px; top: 50%;
+    transform: translateY(-50%); width: 3px; height: 16px;
+    border-radius: 2px; background: var(--cx-blue);   /* #83c3fe on #181818 = 9.47:1 */
+  }
+  .v2cx-composer.collapsed .v2cx-composer-stub { display: block; height: 16px; line-height: 16px; }
+  ```
+
+  **一般规律**：任何「收起/折叠」态，不能只靠填充色差让人看见 —— 同色系里拉开 1.2~1.4:1
+  在视觉上等于没有。至少要有一个对底色过 3:1 的实体（描边/强调条/图标），
+  文字保持在 `--cx-text-dim` 以上（`#909090` on `#242424` = 4.86:1，过 AA）。
+  测试里这两条是**按 token 实算对比度**断言的，不是看着规则存在就算过。
+- **收起按钮自身绝不能被藏**（`position: absolute` 挂在卡片右上角，不在工具条里）——
+  它是收起态唯一的出口；细条只有 32px 高，所以它在收起态要改成
+  `top: 50%; transform: translateY(-50%)` 垂直居中（`top: 6px` 是按展开态算的）。
+- 细条上的文字：有草稿显示摘要；没草稿时显示「输入框已收起 · 点这里展开」，
+  **不要**回落到编辑区占位符 —— 占位符是一句像正文的提示，收起后看着像个空壳。
+- `setComposerCollapsed()` 刻意**不走 `setCfg()`**：那会触发 `applySettings()` 整页重渲染，
+  而收起只是个「隐藏几个节点」的视觉效果。重渲染既浪费，又会把调用方手里的 DOM 引用换掉
+  （测试里就表现成「点完之后 query 到的还是旧节点」）。
+- 收起态下点楼层的「回复」会先 `expandComposer()` 再写 `@某人`，
+  否则内容写进去了、用户却看不见输入框。
+
+---
+
 ## 怎么再加一个自动反应
 
 `createPageLeaveWatcher()` 只负责回答「鼠标还在不在页面里」，复用它可以低成本地挂别的行为。
@@ -439,7 +536,7 @@ npm install   # 只装 jsdom
 npm test      # = node tools/test-jsdom.js
 ```
 
-当前结果是 **923 passed, 0 failed**（加这两个功能之前是 852）。
+当前结果是 **961 passed, 0 failed**（加这两个功能之前是 852）。
 其中这次新增的：
 
 - 设置面板用例里多了一组**不透明度断言**：默认变量 = `1` 且不加 `v2cx-page-dim`、
@@ -461,6 +558,15 @@ npm test      # = node tools/test-jsdom.js
   `pageOpacity=0` 这类坏数据被收到滑杆下界，
   以及 **`sidebarAutoRestore=false`** 的一整组：离开照样伪装、鼠标回来 / 标签页重新可见
   都不自动退、手动 `Esc`² 仍能退出、后续 blur 不会把手动那次伪装认领成自动触发。
+- **底部输入框**那组（在「底部输入框」用例里）：工具条 `flex-wrap: wrap`、按钮 `flex: none`、
+  状态位可压缩且 `order` 排在按钮之后、收起 / 展开（`aria-expanded` 与 title 同步、
+  - 收起 / 展开（`aria-expanded` 与 title 同步、收起后输入区与工具条 `display: none`、
+  **收起按钮自己仍可见**、细条可见且带草稿摘要、**卡片高度写死 32px**、细条自己有 16px 高度、
+  收起按钮垂直居中、整卡 `cursor: pointer`、无草稿时细条写「已收起」、
+  草稿内容不被改动、收起态落盘 / 跨刷新保持、点细条展开、收起态点「回复」自动展开）；
+  另外两条**按 token 实算对比度**的断言：强调条对页面底 > 3:1（实测 9.47:1）、
+  细条文字对卡片底 >= 4.5:1（实测 4.86:1）—— 这一对才是「看不看得见」的真正判据，
+  只断言「规则存在」会漏掉第一版那种「规则都在、就是没有对比」的情况。
 
 ### 浏览器手测清单
 
@@ -481,6 +587,11 @@ npm test      # = node tools/test-jsdom.js
    （这条专门覆盖「button 不产生 change、监听器没重登记」那个坑。）
 7. **关掉自动恢复**：把「鼠标回来自动恢复」关掉，鼠标移出页面 → 变成 IDE；
    鼠标移回页面 → **仍然是 IDE**（不自动退出），按 `Esc` `Esc` 才回到正常视图。
+8. **输入框收起**：点输入框右上角的 `⌄` —— 卡片缩成一条 **32px 高**的细条
+   （上面显示草稿摘要，没草稿时写「输入框已收起 · 点这里展开」）；
+   再点 `⌃`、或直接点细条任意位置，都能展开，内容还在。刷新页面确认状态保持；
+   然后把窗口拖窄到 1000px 左右：13 个工具图标应当**换行显示**，一个都不缺。
+   收起状态下点任意楼层的「回复」，输入框应当自动展开并写好 `@某人`。
 7. **和 `stealth` 的关系**：把「伪装模式」关掉，侧边栏模式应当整体失效（页面不再自动伪装）。
 
 ---
@@ -516,3 +627,7 @@ npm test      # = node tools/test-jsdom.js
 | `previewSetting()` | 拖控件时的即时预览：先看 `item.preview`，再看 `SETTING_CSS_VAR` |
 | `bindSettingsPanel()` | 面板事件绑定：开关点击、`input` 预览、`change` 落盘 |
 | `bootstrap()` | 启动编排：注入样式、`applyVisualSettings()`、建并启动 `sidebarAutoHide` |
+| `composerCollapsed` | `DEFAULTS` 里的底部输入框收起状态（不是面板控件，但存在 `v2cx:settings` 里） |
+| `applyComposerCollapsed()` / `setComposerCollapsed()` / `toggleComposerCollapsed()` / `expandComposer()` | 收起态的 DOM 应用 / 落盘 / 切换 / 需要时叫出来 |
+| `mdSyncStub()` | 收起态细条上的内容：有草稿显示摘要，没草稿显示「输入框已收起 · 点这里展开」 |
+| `anchorPopup(pop, btn)` | 「更多」/ 表情弹层按按钮实位置锚定 —— 工具条换行后位置会变，不能只靠 CSS 写死 |

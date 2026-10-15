@@ -132,7 +132,16 @@
     thumbWidth: 260,
     thumbHeight: 170,
     /** 鼠标悬停时浮出大图预览 */
-    thumbPreview: true
+    thumbPreview: true,
+
+    /* —— 底部输入框 —— */
+    /**
+     * 底部输入框是否收起成一条细条。
+     * 这不是「设置面板里的一项」而是个 UI 状态，但仍然放进 DEFAULTS：
+     * 这样它会被「恢复默认」一起复位、也只有一个存储出口（v2cx:settings），
+     * 不会多出一个没人管的独立 localStorage 键。
+     */
+    composerCollapsed: false
   };
 
   const SETTINGS_KEY = "v2cx:settings";
@@ -1888,6 +1897,80 @@
     /* 代码面板展开时再收一档（原版输入框随分屏变窄） */
     .v2cx-main:not(.panel-hidden) .v2cx-composer { max-width: 500px; }
 
+    /* ---------- 收起态 ----------
+     * 收起后卡片变成一条 32px 高的细条。这里每一行都是针对「收起后完全看不见」
+     * 那次事故的：**卡片其实一直渲染着（约 36px），是「看不出有东西」**，
+     * 不是高度塌了。三条实测（WCAG，暗色）：
+     *   1. 填充 --cx-composer-bg(#2a2a2a) 对页面底 --cx-bg(#181818) 只有 1.24:1
+     *      （非文本图形要 3:1）→ 卡片没有剪影。展开态之所以看得见，是因为里面有
+     *      14px 的 --cx-text 白字和工具条图标；
+     *   2. 边框 --cx-border 是 rgba(255,255,255,0.08)，叠在 #181818 上合成 #2a2a2a
+     *      —— 和卡片自身填充**完全相等**，边框等于没画（1.000:1）；
+     *   3. 细条上唯一的文字是 12px 的占位符、颜色 --cx-text-faint(#646464)
+     *      → 2.43:1（AA 正文要 4.5:1）。
+     * 所以修法不是「把高度写死」（那是误判；写死只是顺带把 36px 收到 32px），
+     * 而是**给它能算出对比的轮廓 + 能读出来的文字**：
+     *   - 填充换成 --cx-bg-raised（暗 #242424 / 浅 #ffffff），对页面底拉开 1.35~1.10:1；
+     *   - 描边换 --cx-border-strong（比 --cx-border 那层「和填充同色」的假边框实在）；
+     *   - 左缘加一条 --cx-blue 的强调条：只有它是对页面底真正过 3:1 的元素
+     *     （暗色 #83c3fe on #181818 ≈ 7.9:1），一眼就能看出「这儿有个收起的条」；
+     *   - 文字用 --cx-text-dim（#909090 对 #2a2a2a = 4.50:1，刚好过 AA），
+     *     没草稿时文案明确写「输入框已收起」而不是回落到像正文的占位符；
+     *   - 高度仍然显式写死：折叠态只剩一个子元素，让它自己撑高度是没必要的脆弱契约。
+     * （附：纯靠「填充色差」是做不到的 —— 卡片填充对页面底最多只能到 ~1.35:1，
+     *   远低于非文本对比 3:1 的要求，所以必须有一个强调元素。）
+     * ------------------------------------------------------------------ */
+    .v2cx-composer.collapsed {
+      box-sizing: border-box;   /* height 含边框，别被 padding 顶出去 */
+      height: 32px;
+      min-height: 32px;
+      padding: 0 8px 0 12px;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      /* 更亮的底 + 更实的描边，跟页面底拉开轮廓 */
+      background: var(--cx-bg-raised);
+      border-color: var(--cx-border-strong);
+    }
+    /* 左缘强调条：整个收起态里唯一对页面底过 3:1 的元素 */
+    .v2cx-composer.collapsed::before {
+      content: "";
+      position: absolute;
+      left: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 16px;
+      border-radius: 2px;
+      background: var(--cx-blue);
+    }
+    .v2cx-composer.collapsed:hover { border-color: var(--cx-blue); }
+    .v2cx-composer.collapsed .v2cx-md-edit,
+    .v2cx-composer.collapsed .v2cx-compose-preview,
+    .v2cx-composer.collapsed .v2cx-compose-target,
+    .v2cx-composer.collapsed .v2cx-composer-toolbar,
+    .v2cx-composer.collapsed .v2cx-plus-pop { display: none !important; }
+    .v2cx-composer-stub {
+      display: none;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--cx-text-dim);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    /* 细条文字自己也有确定高度，不靠父级 flex 计算 */
+    .v2cx-composer.collapsed .v2cx-composer-stub {
+      display: block;
+      height: 16px;
+      line-height: 16px;
+    }
+    .v2cx-composer.collapsed .v2cx-composer-stub.has-content { color: var(--cx-text); }
+
     .v2cx-compose-target {
       display: flex;
       align-items: center;
@@ -1974,13 +2057,25 @@
     .v2cx-compose-preview img { max-width: 100%; border-radius: 6px; }
     .v2cx-compose-preview hr { border: none; border-top: 1px solid var(--cx-border); margin: 8px 0; }
 
+    /* ---------- 工具条 ----------
+     * 13 个按钮 + 状态位 + 发送键在窄卡片里会超宽。这里做两件事：
+     *   1. flex-wrap: wrap —— 装不下就换行，绝不让按钮被裁掉（原来没有 wrap，
+     *      超出的按钮直接看不见，这就是「侧边栏下图标显示不全」的根因）；
+     *   2. 状态位 flex: 0 1 auto + min-width: 0 + order: 1 —— 它是唯一的可压缩项，
+     *      先被压到 0 再触发换行；order 让它换行后落在工具按钮后面，
+     *      不会插到按钮中间。按钮自己 flex: none，永远保持 28px 正方。
+     * 顺带说明为什么不再硬性依赖 max-width 的数字：窗口/分栏一变，卡片宽度就变，
+     * 只有 wrap 才能在所有宽度下都成立。
+     * ------------------------------------------------------------------ */
     .v2cx-composer-toolbar {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 2px;
       padding-top: 8px;
       margin-top: 6px;
       border-top: 1px solid var(--cx-border-soft);
+      min-width: 0;
     }
     .v2cx-tool-btn {
       width: 28px; height: 28px;
@@ -2001,7 +2096,9 @@
     .v2cx-tool-txt { font-size: 13px; font-weight: 600; line-height: 1; }
     .v2cx-tool-btn.on { color: var(--cx-blue); }
     .v2cx-composer-status {
-      flex: 1;
+      flex: 0 1 auto;
+      order: 1;
+      min-width: 0;
       min-height: 16px;
       font-size: 12px;
       color: var(--cx-text-faint);
@@ -2013,8 +2110,33 @@
     }
     .v2cx-composer-status.ok { color: #52b36b; }
     .v2cx-composer-status.err { color: #e0626a; }
+    /* 收起 / 展开按钮：固定在卡片右上角（回复目标条的 × 给它让出位置）。
+       收起后卡片只剩一条细条，这个按钮就是唯一的出口，所以它不能跟着隐藏。 */
+    .v2cx-composer-collapse {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      border: none;
+      background: none;
+      color: var(--cx-text-dim);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      z-index: 3;
+    }
+    .v2cx-composer-collapse:hover { background: var(--cx-btn-hover); color: var(--cx-text); }
+    .v2cx-composer-collapse svg { width: 14px; height: 14px; transition: transform 0.15s; }
+    .v2cx-composer.collapsed .v2cx-composer-collapse svg { transform: rotate(180deg); }
+    /* 收起态：细条只有 32px 高，按钮要垂直居中（top:6 是按展开态算的） */
+    .v2cx-composer.collapsed .v2cx-composer-collapse { top: 50%; transform: translateY(-50%); }
+    /* 回复目标条也要给这个按钮让位，否则两行的 × 会叠在一起 */
+    .v2cx-compose-target { padding-right: 26px; }
     .v2cx-send {
       flex: none;
+      order: 2;
       width: 30px; height: 30px;
       border-radius: 50%;
       background: var(--cx-send-bg);
@@ -3133,6 +3255,9 @@
         </div>
         <div class="v2cx-composer-wrap">
           <div class="v2cx-composer">
+            <button type="button" class="v2cx-composer-collapse" data-composer-collapse
+              title="收起输入框" aria-expanded="true">${ic("chevronDown")}</button>
+            <div class="v2cx-composer-stub" data-composer-stub></div>
             <div class="v2cx-compose-target" hidden><span></span><button type="button" title="取消回复">×</button></div>
             <div class="v2cx-md-edit" data-compose contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="写点什么…"></div>
             <div class="v2cx-compose-preview" aria-live="polite"></div>
@@ -3850,6 +3975,9 @@
       const user = act.dataset.user || "";
       const edit = mdEditEl();
       if (!edit) return;
+      // 收起态下点「回复」：先把输入框叫出来，否则用户看不到 @ 内容、
+      // 也不知道自己该往哪写，只会觉得按钮没反应。
+      expandComposer();
       const src = mdSource(edit);
       const prefix = user ? "@" + user + " " : "";
       if (prefix && !src.startsWith(prefix)) {
@@ -3859,7 +3987,9 @@
       setCaret(edit, prefix.length);
       mdSyncState();
       setStatus("回复 " + (user || "楼主"), "ok");
-      document.querySelector(".v2cx-composer")?.scrollIntoView({ block: "nearest" });
+      // 有些环境（离线测试的 jsdom）没有 scrollIntoView，别让一个「滚一下」把回复流程打断
+      const card = composerEl();
+      if (card && typeof card.scrollIntoView === "function") card.scrollIntoView({ block: "nearest" });
       return;
     }
 
@@ -4302,6 +4432,7 @@
     edit.classList.toggle("has-content", src.trim().length > 0);
     mdSyncPreview(src);
     mdSyncSend();
+    mdSyncStub();
     if (COMPOSER.draftKey) lsSet(COMPOSER.draftKey, src);
   }
 
@@ -4310,6 +4441,81 @@
     const btn = document.querySelector(".v2cx-send");
     if (!btn || !edit) return;
     btn.disabled = mdSource(edit).trim().length === 0;
+  }
+
+  /* ---- 收起 / 展开 ----------------------------------------------------
+   *
+   * 理由：底部输入框是个 500px 宽的浮层卡片，13 个工具按钮 + 状态 + 发送
+   * 一旦窗口或分栏变窄就会挤（现在工具条会换行兜底，收起是用户主动让出空间的那条路）。
+   *
+   * 三件事：
+   *   - 状态落在卡片自己的 .collapsed 上（外加 <html> 上一个便于外部选择的类）；
+   *   - 折叠状态存进 v2cx:settings（DEFAULTS.composerCollapsed），刷新后保持，
+   *     也能被「恢复默认」一起复位；
+   *   - 收起态只剩一条 32px 细条 + 右上角按钮，所以那个按钮永远不能被一起藏掉。
+   * ------------------------------------------------------------------ */
+
+  function composerEl() {
+    return document.querySelector(".v2cx-composer");
+  }
+
+  function composerCollapsed() {
+    return !!cfg("composerCollapsed");
+  }
+
+  /**
+   * 收起态那条细条上显示什么。
+   * 有草稿 → 摘要（用户能确认内容还在）；没草稿 → 明确写「输入框已收起」
+   * 而不是回落到编辑区占位符（占位符是一句像正文的提示，收起后看起来就像
+   * 一个空壳，用户会以为东西坏了/没了）。
+   */
+  function mdSyncStub() {
+    const edit = mdEditEl();
+    const stub = document.querySelector("[data-composer-stub]");
+    if (!edit || !stub) return;
+    const src = mdSource(edit).replace(/\s+/g, " ").trim();
+    if (src) {
+      stub.textContent = src.length > 60 ? src.slice(0, 60) + "…" : src;
+    } else {
+      stub.textContent = "输入框已收起 · 点这里展开";
+    }
+    stub.classList.toggle("has-content", src.length > 0);
+  }
+
+  /** 把收起状态作用到 DOM（不动存储），并同步按钮语义 */
+  function applyComposerCollapsed(on) {
+    const c = composerEl();
+    if (!c) return;
+    c.classList.toggle("collapsed", !!on);
+    document.documentElement.classList.toggle("v2cx-composer-collapsed", !!on);
+    const btn = document.querySelector("[data-composer-collapse]");
+    if (btn) {
+      btn.title = on ? "展开输入框" : "收起输入框";
+      btn.setAttribute("aria-expanded", on ? "false" : "true");
+    }
+    // 收起时把弹层关掉，免得它们在 display:none 之后还留着 .on 状态
+    if (on) c.querySelectorAll("[data-plus-pop], [data-emoji-pop]").forEach((p) => p.classList.remove("on"));
+    mdSyncStub();
+  }
+
+  /** 用户点按钮走的这条：作用到 DOM + 落盘。
+   *  刻意不走 setCfg()：那会触发 applySettings() 整页重渲染，而收起只是个
+   *  「隐藏几个节点」的视觉效果 —— 重渲染既浪费，又会把用户手里的 DOM 引用换成新的
+   *  （测试里就表现为「点完之后拿到的还是旧节点」）。 */
+  function setComposerCollapsed(on) {
+    applyComposerCollapsed(on);
+    if (!SETTINGS) SETTINGS = loadSettings();
+    SETTINGS.composerCollapsed = !!on;
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(SETTINGS)); } catch { /* 隐私模式等 */ }
+  }
+
+  function toggleComposerCollapsed() {
+    setComposerCollapsed(!composerCollapsed());
+  }
+
+  /** 需要在收起态下把输入框叫出来时用（比如点了某楼的「回复」） */
+  function expandComposer() {
+    if (composerCollapsed()) setComposerCollapsed(false);
   }
 
   function setStatus(text, kind) {
@@ -4585,10 +4791,35 @@
 
   /* ---- 事件绑定（在 ensureMain 里调一次） ---- */
 
+  /**
+   * 把弹层贴到触发它的按钮上方。
+   *
+   * 原来 .v2cx-plus-pop / 表情面板只靠 CSS 的 bottom/left 定位（写死「工具条上方」），
+   * 而工具条现在会在窄卡片里换行：换行后「更多／表情」可能跑到第二行甚至更靠右，
+   * 弹层就会盖住编辑器、或者从卡片左边伸出去。所以打开时按按钮的实际位置算一次。
+   * 量不到布局时（离线测试环境）就保留 CSS 的默认锚点。
+   */
+  function anchorPopup(pop, btn) {
+    const composer = composerEl();
+    if (!pop || !composer || !btn || typeof composer.getBoundingClientRect !== "function") return;
+    const card = composer.getBoundingClientRect();
+    const b = btn.getBoundingClientRect();
+    if (!b.width && !b.height) return; // jsdom：全 0，交给 CSS 默认值
+    pop.style.left = Math.round(b.left - card.left) + "px";
+    pop.style.right = "auto";
+    // 弹层从卡片底部往上排：按钮上边缘到卡片底边还要再留 6px 缝
+    pop.style.bottom = Math.round(card.bottom - b.top + 6) + "px";
+  }
+
   function bindComposer(main) {
     const edit = main.querySelector(".v2cx-md-edit");
     const composer = main.querySelector(".v2cx-composer");
     if (!edit || !composer) return;
+
+    // 恢复上次的收起状态（默认展开）。放在这里而不是渲染 HTML 里，
+    // 是因为状态存在设置里，渲染函数不该读存储。
+    applyComposerCollapsed(!!cfg("composerCollapsed"));
+    mdSyncStub();
 
     edit.addEventListener("input", mdSyncState);
 
@@ -4633,6 +4864,8 @@
         const tool = btn.dataset.tool;
         const pop = composer.querySelector("[data-plus-pop]");
         if (tool === "plus") {
+          // 工具条会换行，「更多」的位置随换行变，所以打开时按按钮实位置锚一次
+          if (pop && !pop.classList.contains("on")) anchorPopup(pop, btn);
           pop?.classList.toggle("on");
           return;
         }
@@ -4651,7 +4884,7 @@
           case "image": mdApply(opSnippet("![](https://)")); break;
           case "emoji": {
             const picker = composer.querySelector("[data-emoji-pop]");
-            if (picker) { picker.classList.toggle("on"); break; }
+            if (picker) { anchorPopup(picker, btn); picker.classList.toggle("on"); break; }
             const pop = el("div", "v2cx-plus-pop");
             pop.dataset.emojiPop = "1";
             pop.style.minWidth = "0";
@@ -4695,6 +4928,30 @@
       }
 
       if (e.target.closest("[data-send]")) { mdSend(); return; }
+
+      // 收起态下整条细条（含空白处）都是「展开」的点击区：细条只有 32px 高，
+      // 让用户非得精确点中那个 22px 的按钮或那串文字太苛刻了。
+      if (composerCollapsed() && !e.target.closest("[data-composer-collapse]")) {
+        if (e.target.closest(".v2cx-composer")) {
+          expandComposer();
+          edit.focus();
+          return;
+        }
+      }
+
+      // 收起 / 展开底部输入框。注意这两个按钮必须在「点空白处收起弹层」之前处理，
+      // 否则点它们会顺手把弹层状态也清一遍（无害，但语义上不对）。
+      if (e.target.closest("[data-composer-collapse]")) {
+        toggleComposerCollapsed();
+        if (!composerCollapsed()) edit.focus();
+        return;
+      }
+      // 收起态那条细条：点它等于「展开并接着写」
+      if (e.target.closest("[data-composer-stub]")) {
+        expandComposer();
+        edit.focus();
+        return;
+      }
 
       const cancel = e.target.closest(".v2cx-compose-target button");
       if (cancel) {

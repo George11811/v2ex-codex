@@ -9,6 +9,7 @@
 // @icon         https://www.v2ex.com/static/icon-192.png
 // @grant        none
 // @run-at       document-start
+// @updateURL    https://raw.githubusercontent.com/George11811/v2ex-codex/master/v2ex-codex.user.js
 // ==/UserScript==
 
 /*

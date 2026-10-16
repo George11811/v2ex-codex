@@ -801,6 +801,33 @@ async function runCloudflareCase() {
   check(name, "不认识的中转页不建 main（按钮还能点）",
     !doc5.querySelector(".v2cx-main") && !!doc5.getElementById("go"));
   dom5.window.close();
+
+  /* ── 6. 防回归：标记晚到时不能把脚本「永久」踢掉（点进帖子露原生样式）──
+   * 真实场景：document-start 时 body 还没解析，looksLikeV2ex() 必然为 false；
+   * 如果那次让位也把 challengeBailed 打上，帖子页就永久不接管了 ——
+   * 表现正是「点进帖子出现原生样式」。 */
+  const lateHtml = `<!doctype html><html><head><title>准备中</title></head>
+    <body><div id="shell"></div></body></html>`;
+  const dom6 = await startChallenge(lateHtml, "https://www.v2ex.com/t/1241734");
+  const win6 = dom6.window, doc6 = win6.document, root6 = doc6.documentElement;
+  check(name, "标记还没到时不接管（不加 locked、不建 rail）",
+    !root6.classList.contains("v2cx-locked") && !doc6.querySelector(".v2cx-rail"),
+    JSON.stringify(root6.className));
+  // 标记迟到了（等价于 body 解析完成）
+  doc6.getElementById("shell").innerHTML =
+    '<div id="Wrapper"><div class="box"><div class="cell">' +
+    '<a href="/t/123">一个帖子</a></div></div></div>';
+  await new Promise((r) => setTimeout(r, 900));   // 等那一次 600ms 重试
+  check(name, "标记晚到后能自动补上接管（不会被永久踢掉）",
+    root6.classList.contains("v2cx") && root6.classList.contains("v2cx-locked") &&
+    !!doc6.querySelector(".v2cx-main"),
+    JSON.stringify(root6.className));
+  check(name, "补接管时样式表也回来了（不会渲染成裸节点）",
+    !!doc6.getElementById("v2ex-codex-theme"));
+  check(name, "补接管后原生 #Wrapper 被隐藏（不再露原生样式）",
+    win6.getComputedStyle(doc6.getElementById("Wrapper")).display === "none",
+    win6.getComputedStyle(doc6.getElementById("Wrapper")).display);
+  dom6.window.close();
 }
 
 /** 拖拽把手：位置 + 拖动写入 CSS 变量 + 双击重置 */async function runResizerCase() {

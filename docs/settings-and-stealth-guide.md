@@ -539,16 +539,52 @@ function looksLikeV2ex() {
 两处调用，缺一不可：
 
 ```js
-// bootstrap()：加 LOCK_CLASS 之前（document-start 时 body 可能还没解析 →
-// 返回 false → 就先不加，宁可让原生页面闪一下）
-if (looksLikeV2ex() && isSupported(route())) root.classList.add(LOCK_CLASS);
-
 // scheduleApply()：真正接管之前的硬门槛
-if (!looksLikeV2ex()) { bailToNative(); return; }
+if (!looksLikeV2ex()) {
+  bailToNative(false);          // 注意这个 false，见下面「时机陷阱」
+  if (!retriedForMarkup) { retriedForMarkup = true; setTimeout(scheduleApply, 600); }
+  return;
+}
 ```
 
 这样即使检测全漏，最坏结果也退化成「**外观没生效，但页面能用**」，
 而不是「验证点不到、站点进不去」。**凡是「隐藏/覆盖原生 DOM」的功能，都该有这么一道门槛**。
+
+#### 时机陷阱：这道门槛绝不能被写成「永久」
+
+第一版把 `looksLikeV2ex()` 失败也当成永久让位（打上 `challengeBailed`），结果**点进任何帖子都露原生样式**。
+原因很隐蔽：document-start 时 `<body>` 还没解析，`looksLikeV2ex()` **必然**返回 false，
+那次让位就把脚本在这个页面上永久关掉了。
+
+所以 `bailToNative(dueToChallenge)` 必须区分两种让位：
+
+| 触发原因 | `dueToChallenge` | 行为 |
+|---|---|---|
+| 确认是 CF 插页 | `true` | 打上 `challengeBailed`，之后所有接管路径直接返回（永久） |
+| 只是「现在还不像 V2EX」 | `false` | 只撤这一轮痕迹，**绝不打标记**，交给一次延时重试 |
+
+```js
+function bailToNative(dueToChallenge) {
+  if (challengeBailed) return;
+  if (dueToChallenge) challengeBailed = true;   // 只有确认是插页才上锁
+  // ...撤类、移除自绘 DOM、移除样式表...
+  if (dueToChallenge) { /* 停掉侧边栏模式 + 打日志 */ }
+}
+```
+
+还有一条连带 bug：`bailToNative()` 会移除样式表，而重试路径当时没有重新注入，
+于是「补接管」会渲染出一堆**没有样式的裸节点**。修法是在接管前加一次幂等的 `injectStyle()`：
+
+```js
+document.documentElement.classList.add(ROOT_CLASS);
+injectStyle();   // 幂等：让位时连样式表一起移除过，这里保证它回来
+syncMode();
+render();
+```
+
+`bootstrap()` 里那句提前加 `LOCK_CLASS`（防原生页面闪一下）**不能**再拿 `looksLikeV2ex()` 当条件 ——
+document-start 时它必然为 false，那样每个帖子页都会闪一下原生样式。
+「不会藏错页面」由 `challengeActive()` 在前一步负责。
 
 ### 两条路都要走
 
@@ -661,7 +697,7 @@ npm install   # 只装 jsdom
 npm test      # = node tools/test-jsdom.js
 ```
 
-当前结果是 **985 passed, 0 failed**（加这两个功能之前是 852）。
+当前结果是 **989 passed, 0 failed**（加这两个功能之前是 852）。
 其中这次新增的：
 
 - 设置面板用例里多了一组**不透明度断言**：默认变量 = `1` 且不加 `v2cx-page-dim`、
@@ -757,6 +793,7 @@ npm test      # = node tools/test-jsdom.js
 | `challengeActive()` | 眼前这页是不是 Cloudflare 验证插页（结构类 + CF 改写痕迹/标题） |
 | `cfServed()` | 页面有没有 CF 改写痕迹（`/cdn-cgi/`、`challenges.cloudflare.com`）—— 跨版本稳定，不依赖固定 class 名 |
 | `looksLikeV2ex()` | **隐藏原生 DOM 的硬门槛**：找不到 V2EX 特征就绝不接管，退回原生页面 |
+| `bailToNative(dueToChallenge)` | 撤场；`true` = 确认是 CF 插页 → 永久让位，`false` = 只是时机问题 → 只撤这一轮 |
 | `bailToNative()` | 幂等总撤场：摘掉所有状态类、移除自绘 DOM、停侧边栏模式、移除样式表 |
 | `startCloudflareWatch()` | MutationObserver 盯插页动态出现，一出现就 `bailToNative()` |
 | `shouldAvoidTakeover()` | 统一闸门 = CF 插页 / 已让位 / 别的主题在跑；键盘绑定与 `scheduleApply()` 都用它 |

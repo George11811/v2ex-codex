@@ -305,7 +305,7 @@ V2EX 没有结构化的引用节点，「楼中楼」就是回复正文以 `@某
 
 ## 已验证的行为
 
-`npm test` 在 jsdom 里加载**真实 V2EX 页面标记**（`ref/*.html` 抓取快照）跑 **985 条断言**：
+`npm test` 在 jsdom 里加载**真实 V2EX 页面标记**（`ref/*.html` 抓取快照）跑 **989 条断言**：
 
 - 11 类路由（`/`、各 `?tab=`、`/recent`、`/go/x`、`/t/x`、`/member/x`、`/planes`）+ 未接管路由 + 空 DOM 兜底
 - **Cloudflare 让位**：启动即命中插页时不加 `html.v2cx` / `v2cx-locked`、不注入样式、不建
@@ -313,7 +313,9 @@ V2EX 没有结构化的引用节点，「楼中楼」就是回复正文以 `@某
   插页**稍后才注入**时自动撤掉接管（摘类、移除 main/rail、移除样式表、并停掉伪装误触）；
   **没有固定 id/class 的插页变体也能认出**（靠 `/cdn-cgi/` 这类 CF 改写痕迹，而不是只认名字）；
   而且**有两道防误判** —— 正常页面上的 CF 统计脚本不触发让位，
-  完全不认识的中间页**绝不隐藏原生 DOM**（宁可外观不生效，也不能让按钮点不到）
+  完全不认识的中间页**绝不隐藏原生 DOM**（宁可外观不生效，也不能让按钮点不到）；
+  标记晚到时（body 在 document-start 之后才解析完）会在 600ms 后自动补上接管，
+  并把样式表一起补回来 —— **不会把正常页面误杀成原生样式**
 - 列表行 / 楼层 / 楼号 / 时间本地化 / 分页 chip / 节点筛选
 - 伪装装饰：思考块覆盖率、`Worked for Ns` 格式、英文正文、折叠交互、只加在回复楼、
   每层 4 个胶囊按钮、`data-reply-id`、**渲染确定性**（刷新不闪）
@@ -412,7 +414,7 @@ docs/settings-and-stealth-guide.md
 ref/README.md               测试夹具说明（来源、内容、怎么重新抓）
 ref/*.html                  真实 V2EX 页面快照，仅供测试
 
-tools/test-jsdom.js         npm test        —— 985 条断言
+tools/test-jsdom.js         npm test        —— 989 条断言
 tools/test-harness.js       npm run harness —— 本地测试台
 tools/shots.sh              npm run shots   —— 无头 Chrome 批量截图
 tools/measure-contrast.js   npm run contrast—— 从截图像素测「有效对比度」

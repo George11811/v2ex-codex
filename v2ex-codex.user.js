@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         V2EX · Codex 外观
 // @namespace    https://www.v2ex.com/
-// @version      1.2.0
+// @version      1.2.1
 // @description  把 V2EX 换成 Codex 桌面 app 风格（左 rail + 主区 + 右侧代码面板，明暗双模式）。仅改变外观，保留站点原有内容与交互。
 // @author       link
 // @match        https://www.v2ex.com/*
@@ -6047,14 +6047,20 @@
   let challengeObserver = null;
 
   /**
-   * 让位：撤掉一切接管痕迹，把页面还给 Cloudflare / 原生站点。
-   * 幂等，observer 和启动路径都会调。
-   * 注意故意**不**动 favicon：标签页图标是 Codex 图标并不影响点验证，
-   * 而这里的目标是「绝不挡住校验」，能少动一样就少动一样。
+   * 让位：撤掉一切接管痕迹，把页面还给原生站点 / Cloudflare。
+   *
+   * `dueToChallenge` 决定这次让位是不是**永久**的：
+   *   - true（确认是 CF 插页）→ 打上 challengeBailed，之后所有接管路径都直接返回；
+   *   - false（只是「现在还不像 V2EX」这类**可能只是时机**的判断）→ 只撤当前这一轮的
+   *     痕迹，**绝不打标记**，等 DOM 就绪后再评估。
+   *
+   * 这个参数是踩坑加的：`looksLikeV2ex()` 在 document-start 时 body 还没解析，
+   * 必然返回 false。如果那里也把标记打上，脚本就会在「点进任何一个帖子」时
+   * 永久失效 —— 表现就是**帖子页露出原生样式、只有左栏被挪出来**。
    */
-  function bailToNative() {
+  function bailToNative(dueToChallenge) {
     if (challengeBailed) return;
-    challengeBailed = true;
+    if (dueToChallenge) challengeBailed = true;
     try {
       const root = document.documentElement;
       root.classList.remove(ROOT_CLASS, LOCK_CLASS, LIGHT_CLASS, DIMMED_CLASS,
@@ -6064,15 +6070,17 @@
       document.querySelector(".v2cx-modal")?.remove();
       document.querySelector(".v2cx-main")?.remove();
       document.querySelector(".v2cx-rail")?.remove();
-      // 侧边栏模式：不能在这个页面上因为「鼠标离开」而切伪装
-      if (sidebarAutoHide) {
-        sidebarAutoHide.stop();
-        sidebarAutoHide = null;
-      }
       // 已经注入的样式表留着无害（所有规则都在 html.v2cx 下，类已摘掉），
       // 但清掉更干净，也避免 --cx-* 变量影响站点自身
       document.getElementById(STYLE_ID)?.remove();
-      console.info("[v2ex-codex] 检测到 Cloudflare 验证页，已让位（不做任何接管）");
+      if (dueToChallenge) {
+        // 侧边栏模式：不能让它在插页上因为「鼠标离开」而切伪装
+        if (sidebarAutoHide) {
+          sidebarAutoHide.stop();
+          sidebarAutoHide = null;
+        }
+        console.info("[v2ex-codex] 检测到 Cloudflare 验证页，已让位（不做任何接管）");
+      }
     } catch (err) {
       console.warn("[v2ex-codex] 让位时出错（忽略）", err);
     }
@@ -6092,7 +6100,7 @@
       if (challengeActive()) {
         challengeObserver?.disconnect();
         challengeObserver = null;
-        bailToNative();
+        bailToNative(true);
       }
     };
     try {
@@ -6112,6 +6120,7 @@
   }
 
   let scheduled = false;
+  let retriedForMarkup = false;
   function scheduleApply() {
     if (scheduled) return;
     scheduled = true;
@@ -6119,9 +6128,10 @@
       scheduled = false;
       try {
         if (shouldAvoidTakeover()) {
-          // Cloudflare 插页要的是「原样」，所以走完整的让位；只是别的主题在跑时
-          // 保持原来的轻量撤场即可（那是并存场景，不该去动人家的样式表）
-          if (challengeBailed || challengeActive()) bailToNative();
+          // 确认是 CF 插页 → 永久让位；只是别的主题在跑 → 轻量撤场即可
+          // （那是并存场景，不该去动人家的样式表）
+          if (challengeActive()) bailToNative(true);
+          else if (challengeBailed) return;
           else {
             document.documentElement.classList.remove(ROOT_CLASS, LOCK_CLASS, "v2cx-rail-open");
             document.querySelector(".v2cx-main")?.remove();
@@ -6130,12 +6140,22 @@
           return;
         }
         // 硬门槛：不确定是 V2EX 就绝不接管（见 looksLikeV2ex 的注释 ——
-        // 隐藏原生 DOM 的前提是「这确实是 V2EX 的页面」）
+        // 隐藏原生 DOM 的前提是「这确实是 V2EX 的页面」）。
+        // 注意这里**不能**调 bailToNative(true)：那会让脚本在这个页面上永久失效，
+        // 而「现在还不像 V2EX」很可能只是标记还没解析完（点进帖子的首次运行就是这样）。
+        // 只撤这一轮痕迹 + 过一会儿重试一次。
         if (!looksLikeV2ex()) {
-          bailToNative();
+          bailToNative(false);
+          if (!retriedForMarkup) {
+            retriedForMarkup = true;
+            setTimeout(scheduleApply, 600);
+          }
           return;
         }
         document.documentElement.classList.add(ROOT_CLASS);
+        // 幂等：让位时会连样式表一起移除，所以接管前保证它在
+        // （不然「先让位、再重试接管」会渲染出一堆没有样式的裸节点）
+        injectStyle();
         syncMode();
         render();
       } catch (err) {
@@ -6159,8 +6179,8 @@
     // 最重要的一步，必须排在 injectStyle 之前：Cloudflare 插页上我们什么都不做，
     // 连样式都不注入（注入了就等于把原生页面藏起来，复选框就点不到了）。
     startCloudflareWatch();
-    if (challengeBailed || challengeActive()) {
-      bailToNative();
+    if (challengeActive()) {
+      bailToNative(true);
       return;
     }
 
@@ -6169,10 +6189,10 @@
       syncMode();
       document.documentElement.classList.add(ROOT_CLASS);
       // 尽早加 LOCK_CLASS，避免原生页面闪一下。
-      // 但**必须**先确认这页像 V2EX：document-start 时 body 可能还没解析，
-      // looksLikeV2ex() 返回 false，那就先不加 —— 宁可闪一下原生页面，
-      // 也不能在一个「不是 V2EX」的页面上把 #Wrapper 藏起来（Cloudflare 插页就是这样被锁死的）。
-      if (looksLikeV2ex() && isSupported(route())) document.documentElement.classList.add(LOCK_CLASS);
+      // 这里**不能**再拿 looksLikeV2ex() 当条件：document-start 时 body 还没解析，
+      // 它必然返回 false，那样每个帖子页都会先闪一下原生样式。
+      // 「不会藏错页面」由上面的 challengeActive() 负责（那才是真正要防的场景）。
+      if (isSupported(route())) document.documentElement.classList.add(LOCK_CLASS);
       applyFavicon();
     }
     applyVisualSettings();
@@ -6195,7 +6215,7 @@
     domReady().then(() => {
       // 页面加载完毕再确认一次：有些插页（或 CF 的挑战脚本）是这时候才成形的
       if (challengeActive()) {
-        bailToNative();
+        bailToNative(true);
         return;
       }
       scheduleApply();

@@ -772,6 +772,35 @@ async function runCloudflareCase() {
     doc3.documentElement.classList.contains("v2cx") && !!doc3.querySelector(".v2cx-main"),
     JSON.stringify(doc3.documentElement.className));
   dom3.window.close();
+
+  /* ── 4. 插页变体：没有我列的 id/class，只有 /cdn-cgi/ 脚本 ── */
+  // 这是「有时会卡验证」的成因：只认固定 id/class 的检测漏掉变体，
+  // 于是脚本把原生页面藏了 —— 而 Turnstile 复选框就在被藏的那部分里。
+  const variantHtml = `<!doctype html><html><head><title>www.v2ex.com</title>
+    <script src="/cdn-cgi/challenge-platform/h/g/orchestrate/jsch/v1"></script>
+    </head><body><div class="cf-challenge-container"><p>Verifying…</p></div></body></html>`;
+  const dom4 = await startChallenge(variantHtml, "https://www.v2ex.com/t/1241734");
+  const doc4 = dom4.window.document;
+  check(name, "变体插页也认（靠 /cdn-cgi/ 脚本，不靠固定 id）",
+    !doc4.documentElement.classList.contains("v2cx") &&
+    !doc4.documentElement.classList.contains("v2cx-locked"),
+    JSON.stringify(doc4.documentElement.className));
+  check(name, "变体插页不注入样式表", !doc4.getElementById("v2ex-codex-theme"));
+  dom4.window.close();
+
+  /* ── 5. 最后的安全网：不确定是 V2EX 就绝不隐藏原生 DOM ── */
+  // 这一条对着「无限卡验证」的根因：只要脚本敢隐藏自己不认识页面的原生内容，
+  // 就可能把用户唯一能操作的东西（复选框）藏掉。所以要求正向证据。
+  const alienHtml = `<!doctype html><html><head><title>www.v2ex.com</title></head>
+    <body><div id="wrapper"><p>某个我们不认识的中间页</p><button id="go">继续</button></div></body></html>`;
+  const dom5 = await startChallenge(alienHtml, "https://www.v2ex.com/t/1241734");
+  const doc5 = dom5.window.document;
+  check(name, "不认识的中转页不接管（不加 locked 去藏原生 DOM）",
+    !doc5.documentElement.classList.contains("v2cx-locked"),
+    JSON.stringify(doc5.documentElement.className));
+  check(name, "不认识的中转页不建 main（按钮还能点）",
+    !doc5.querySelector(".v2cx-main") && !!doc5.getElementById("go"));
+  dom5.window.close();
 }
 
 /** 拖拽把手：位置 + 拖动写入 CSS 变量 + 双击重置 */async function runResizerCase() {

@@ -488,17 +488,67 @@ html.v2cx.v2cx-locked #Bottom { display: none !important; }
 
 ### 判据：怎么认出插页
 
-`challengeActive()`，任一命中即算（宁可漏判也有 observer 兜底，但不能误判把正常页挡掉）：
+判据要**从宽**（宁可多让位，也别把必点的复选框藏起来），但不能宽到把正常页面也判成插页。
+分两层：
 
-| 类别 | 判据 | 说明 |
-|---|---|---|
-| 结构 | `#challenge-form`、`#challenge-running`、`#challenge-stage`、`#cf-wrapper`、`#cf-content`、`#turnstile-wrapper`、`.cf-turnstile`、`.cf-browser-verification` | 这些 id/class 只属于 CF 插页，站内不会撞 |
-| 脚本 | `<script src*="/cdn-cgi/challenge-platform">`、`src*="challenges.cloudflare.com"` | 只在插页里出现 |
-| 标题 | `Just a moment…` / `Attention Required!` / `正在验证` **且**同时存在 CF 脚本 | 单独看标题会误判，必须配脚本信号 |
-| meta | `meta[http-equiv=refresh]` **且**有 `/cdn-cgi/` 脚本 | 兼容老式跳转页 |
+**第一层 `challengeActive()`** —— 结构类命中即算：
+
+| 类别 | 判据 |
+|---|---|
+| 结构 | `#challenge-form`、`#challenge-running`、`#challenge-stage`、`#challenge-body`、`#challenge-container`、`#cf-wrapper`、`#cf-content`、`#cf-error-details`、`#turnstile-wrapper`、`.cf-turnstile`、`.cf-browser-verification`、`iframe[src*="challenges.cloudflare.com"]` |
+| CF 改写 + 标题 | 页面含 `/cdn-cgi/` 痕迹，且标题是 `Just a moment…` / `Attention Required!` / `正在验证` / `verify you are human` 之类 |
+
+**第二层 `cfServed()`** —— 这是「有时会卡验证」那次修复的核心。
+不要只认固定 id/class：Cloudflare 的插页**换版本就会换 class 名**，只认名字必然漏。
+真正跨版本稳定的是 **`/cdn-cgi/`** 这个路径 —— 只在 **CF 改写过的响应**里出现
+（挑战脚本 `/cdn-cgi/challenge-platform/...`、Turnstile `challenges.cloudflare.com`、
+静态资源、表单 action 都走它），而源站正常返回的 V2EX 页面不会有。
+
+```js
+// 扫 <script src>；再兜底扫一遍标记本身（插页很小，代价可忽略）
+for (const s of doc.querySelectorAll("script[src]")) {
+  const src = s.getAttribute("src") || "";
+  if (src.indexOf("/cdn-cgi/") >= 0) return true;
+  if (src.indexOf("challenges.cloudflare.com") >= 0) return true;
+}
+if (doc.body && doc.body.innerHTML.indexOf("/cdn-cgi/") >= 0) return true;
+```
 
 **`static.cloudflareinsights.com` 单独不算** —— 那是 CF 给正常站点也加的统计 beacon，
 拿它当判据会把整个 V2EX 都判成插页。测试里专门有一条「只有 CF 统计脚本时照常接管」。
+
+### 第二道保险（更根本）：不确定是 V2EX 就绝不隐藏原生 DOM
+
+只靠「认出插页」是不够的 —— **挑战页是 CF 在 V2EX 的 URL 上返回的**，
+所以 `route()` 照样返回 `list`/`topic` 这类受支持路由，脚本会去加 `LOCK_CLASS`。
+也就是说：**只要检测漏一个变体，用户就被锁死一次**。这个赌注不该下。
+
+所以把顺序反过来：**先要求「这确实是 V2EX 的页面」这个正向证据，才允许隐藏原生 DOM。**
+
+```js
+function looksLikeV2ex() {
+  return !!document.querySelector(
+    "#Wrapper, #Top, #Bottom, #Main, " +                      // 站点骨架
+    ".box, .cell, .topic_info, .item_title, " +               // 列表 / 详情
+    "a[href^='/t/'], a[href^='/member/'], a[href^='/go/'], " + // V2EX 特有链接
+    "link[rel='stylesheet'][href*='v2ex']"
+  );
+}
+```
+
+两处调用，缺一不可：
+
+```js
+// bootstrap()：加 LOCK_CLASS 之前（document-start 时 body 可能还没解析 →
+// 返回 false → 就先不加，宁可让原生页面闪一下）
+if (looksLikeV2ex() && isSupported(route())) root.classList.add(LOCK_CLASS);
+
+// scheduleApply()：真正接管之前的硬门槛
+if (!looksLikeV2ex()) { bailToNative(); return; }
+```
+
+这样即使检测全漏，最坏结果也退化成「**外观没生效，但页面能用**」，
+而不是「验证点不到、站点进不去」。**凡是「隐藏/覆盖原生 DOM」的功能，都该有这么一道门槛**。
 
 ### 两条路都要走
 
@@ -611,7 +661,7 @@ npm install   # 只装 jsdom
 npm test      # = node tools/test-jsdom.js
 ```
 
-当前结果是 **981 passed, 0 failed**（加这两个功能之前是 852）。
+当前结果是 **985 passed, 0 failed**（加这两个功能之前是 852）。
 其中这次新增的：
 
 - 设置面板用例里多了一组**不透明度断言**：默认变量 = `1` 且不加 `v2cx-page-dim`、
@@ -672,6 +722,9 @@ npm test      # = node tools/test-jsdom.js
 9. **Cloudflare 插页**：如果在 V2EX 前面遇到「正在验证…」插页，页面上应当**只有**
    Cloudflare 自己的东西 —— 没有左栏、没有 Codex 顶栏，复选框能正常点；
    验证通过后回到正常页面，脚本才接管。按 Esc / Ctrl+, 在插页上都不该有反应。
+   如果反复卡在验证，说明检测漏了新变体 —— 此时因为 `looksLikeV2ex()` 那道门槛，
+   页面上应该至少还是**原生 V2EX / CF 页面可用**的状态（外观没生效，但点得到），
+   把 `console` 里有没有 `[v2ex-codex] 检测到 Cloudflare 验证页，已让位` 这一行记下来反馈。
 
 ---
 
@@ -701,7 +754,9 @@ npm test      # = node tools/test-jsdom.js
 | `bossOn()` | 当前是否在伪装视图里（看 `<html>` 上的 `v2cx-boss-on`） |
 | `settingsOpen()` | 设置面板是否开着（`bossAutoHideAllowed()` 用它挡掉自动伪装） |
 | `otherThemeActive()` | 是否别的 Codex 主题在跑（同一个守卫用） |
-| `challengeActive()` | 眼前这页是不是 Cloudflare 验证插页（结构 / 脚本 / 标题+脚本 / meta 四类判据） |
+| `challengeActive()` | 眼前这页是不是 Cloudflare 验证插页（结构类 + CF 改写痕迹/标题） |
+| `cfServed()` | 页面有没有 CF 改写痕迹（`/cdn-cgi/`、`challenges.cloudflare.com`）—— 跨版本稳定，不依赖固定 class 名 |
+| `looksLikeV2ex()` | **隐藏原生 DOM 的硬门槛**：找不到 V2EX 特征就绝不接管，退回原生页面 |
 | `bailToNative()` | 幂等总撤场：摘掉所有状态类、移除自绘 DOM、停侧边栏模式、移除样式表 |
 | `startCloudflareWatch()` | MutationObserver 盯插页动态出现，一出现就 `bailToNative()` |
 | `shouldAvoidTakeover()` | 统一闸门 = CF 插页 / 已让位 / 别的主题在跑；键盘绑定与 `scheduleApply()` 都用它 |

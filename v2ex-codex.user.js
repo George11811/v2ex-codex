@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         V2EX · Codex 外观
 // @namespace    https://www.v2ex.com/
-// @version      1.1.0
+// @version      1.2.0
 // @description  把 V2EX 换成 Codex 桌面 app 风格（左 rail + 主区 + 右侧代码面板，明暗双模式）。仅改变外观，保留站点原有内容与交互。
 // @author       link
 // @match        https://www.v2ex.com/*
@@ -5961,43 +5961,86 @@
 
   /** 明确的插页元素名（这些 id/class 只属于 Cloudflare 插页，站内不会撞） */
   const CF_SELECTOR = [
-    "#challenge-form", "#challenge-running", "#challenge-stage",
-    "#cf-challenge-running", "#cf-please-wait", "#cf-wrapper", "#cf-content",
-    "#turnstile-wrapper", ".cf-turnstile", ".cf-browser-verification"
+    "#challenge-form", "#challenge-running", "#challenge-stage", "#challenge-body",
+    "#challenge-container", "#cf-challenge-running", "#cf-please-wait",
+    "#cf-wrapper", "#cf-content", "#cf-error-details", "#cf-error-overview",
+    "#turnstile-wrapper", ".cf-turnstile", ".cf-browser-verification",
+    "iframe[src*='challenges.cloudflare.com']"
   ].join(", ");
 
   /**
+   * 页面里有没有「Cloudflare 经手」的痕迹。
+   *
+   * `/cdn-cgi/` 是这条判据的核心，而且是**跨版本稳定**的：
+   *   - 挑战脚本：`/cdn-cgi/challenge-platform/...`
+   *   - Turnstile：`https://challenges.cloudflare.com/turnstile/...`
+   *   - 静态资源 / 表单 action 也走 `/cdn-cgi/`
+   * 关键是 `/cdn-cgi/` 只会出现在 **Cloudflare 改写过的响应**里，
+   * 正常由源站返回的 V2EX 页面不会有它（统计 beacon 是绝对 URL，不含这段路径）。
+   * 所以它单独就能当判据。
+   *
+   * 注意 `static.cloudflareinsights.com`（统计 beacon）**不算** —— 它有可能出现在
+   * 正常页面上，拿它当判据会把整个 V2EX 都判成插页。
+   */
+  function cfServed() {
+    const doc = document;
+    try {
+      for (const s of doc.querySelectorAll("script[src]")) {
+        const src = s.getAttribute("src") || "";
+        if (src.indexOf("/cdn-cgi/") >= 0) return true;
+        if (src.indexOf("challenges.cloudflare.com") >= 0) return true;
+      }
+      // 少数变体把 /cdn-cgi/ 放在别处（表单 action、link href）
+      for (const a of doc.querySelectorAll("form[action*='/cdn-cgi/'], link[href*='/cdn-cgi/']")) {
+        if (a) return true;
+      }
+      // 兜底扫一遍标记本身：插页很小，代价可以忽略
+      if (doc.body && doc.body.innerHTML.indexOf("/cdn-cgi/") >= 0) return true;
+    } catch {
+      // 任何异常都当作「不是插页」：宁可接管错了也有 looksLikeV2ex() 兜底
+      return false;
+    }
+    return false;
+  }
+
+  /**
    * 眼前这页是不是 Cloudflare 的验证/拦截插页。
-   * 判据分两类，任一命中即算：
-   *   - 结构类：上面那几个 id/class；
-   *   - 脚本类：`/cdn-cgi/challenge-platform/...` 或 `static.cloudflareinsights.com`
-   *     —— 前者只在插页里出现，后者是 CF 给正常页面也加的统计脚本，
-   *     所以**必须**和别的信号一起看，不能单独成立（否则整个 V2EX 都会被误判）。
-   * 标题只当辅助（"Just a moment..." / "Attention Required!"），
-   * 且要求同时存在 CF 脚本，避免标题里恰好有这些词。
+   * 判据从宽（宁可多让位，也别把必点的复选框藏起来）：
+   *   - 结构类命中；或
+   *   - 页面经 CF 改写、且标题是典型的插页标题。
    */
   function challengeActive() {
     const doc = document;
     try {
       if (doc.querySelector(CF_SELECTOR)) return true;
-      const scripts = doc.scripts || [];
-      let cfScript = false;
-      for (const s of scripts) {
-        const src = (s && s.src) || "";
-        if (src.indexOf("/cdn-cgi/challenge-platform") >= 0) return true;
-        if (src.indexOf("challenges.cloudflare.com") >= 0) return true;
-        if (src.indexOf("static.cloudflareinsights.com") >= 0) cfScript = true;
-      }
-      if (cfScript && /just a moment|attention required|checking your browser|正在验证|验证您是否/i.test(doc.title || "")) {
-        return true;
-      }
-      if (doc.querySelector('meta[http-equiv="refresh" i]') &&
-          doc.querySelector('script[src*="/cdn-cgi/"]')) return true;
+      if (!cfServed()) return false;
+      // 到这儿说明页面已经被 CF 接手；只有标题也像插页才判定，
+      // 避免「CF 正常加速 + 站点自己的通道页」被误判
+      return /just a moment|attention required|checking your browser|verify(ing)? (you are )?human|enable javascript and cookies|正在验证|验证您是否|校验|请稍候/i
+        .test(doc.title || "");
     } catch {
-      // 任何异常都当作「不是插页」，宁可接管错了（有 observer 兜底）也不能把正常页面挡住
       return false;
     }
-    return false;
+  }
+
+  /**
+   * 眼前这页看起来是不是真的 V2EX 页面。
+   *
+   * 这是「隐藏原生 DOM」的**安全前提**：脚本接管会把 #Wrapper 整体 display:none，
+   * 万一面对的其实不是 V2EX（Cloudflare 插页 / 其它中间页 / 站点改版），
+   * 那就等于把用户能操作的唯一东西藏起来了 —— 实测表现就是「验证卡死、点不到」。
+   * 所以把「先确认是 V2EX」当成硬门槛：**不确定就不隐藏**，退回原生页面，
+   * 最多是外观没生效，绝不会让站点不可用。
+   */
+  function looksLikeV2ex() {
+    const doc = document;
+    if (!doc.body) return false;
+    return !!doc.querySelector(
+      "#Wrapper, #Top, #Bottom, #Main, " +            // 站点骨架
+      ".box, .cell, .topic_info, .item_title, " +     // 列表 / 详情
+      "a[href^='/t/'], a[href^='/member/'], a[href^='/go/'], " + // V2EX 特有链接
+      "link[rel='stylesheet'][href*='v2ex'], link[rel='icon'][href*='v2ex']"
+    );
   }
 
   let challengeBailed = false;
@@ -6086,6 +6129,12 @@
           }
           return;
         }
+        // 硬门槛：不确定是 V2EX 就绝不接管（见 looksLikeV2ex 的注释 ——
+        // 隐藏原生 DOM 的前提是「这确实是 V2EX 的页面」）
+        if (!looksLikeV2ex()) {
+          bailToNative();
+          return;
+        }
         document.documentElement.classList.add(ROOT_CLASS);
         syncMode();
         render();
@@ -6119,8 +6168,11 @@
     if (!otherThemeActive()) {
       syncMode();
       document.documentElement.classList.add(ROOT_CLASS);
-      // 尽早加 LOCK_CLASS，避免原生页面闪一下
-      if (isSupported(route())) document.documentElement.classList.add(LOCK_CLASS);
+      // 尽早加 LOCK_CLASS，避免原生页面闪一下。
+      // 但**必须**先确认这页像 V2EX：document-start 时 body 可能还没解析，
+      // looksLikeV2ex() 返回 false，那就先不加 —— 宁可闪一下原生页面，
+      // 也不能在一个「不是 V2EX」的页面上把 #Wrapper 藏起来（Cloudflare 插页就是这样被锁死的）。
+      if (looksLikeV2ex() && isSupported(route())) document.documentElement.classList.add(LOCK_CLASS);
       applyFavicon();
     }
     applyVisualSettings();

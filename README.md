@@ -35,8 +35,23 @@
 ## 安装
 
 1. 安装 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 打开 [hupu-codex.user.js](https://github.com/George11811/v2ex-codex/blob/main/v2ex-codex.user.js)，点 Raw 后安装。
+2. 打开 [v2ex-codex.user.js](https://github.com/George11811/v2ex-codex/blob/main/v2ex-codex.user.js)，点 Raw 后安装。
 3. 访问 https://www.v2ex.com/ 。
+
+头部带 `@updateURL` / `@downloadURL`，所以之后脚本升版（`@version`）时 Tampermonkey 会提示更新，
+不用手动重装。
+
+## 更新日志
+
+| 版本 | 主要变化 |
+|---|---|
+| **1.1.0** | 设置面板新增**页面不透明度**滑杆（只调脚本自绘的界面）与**侧边栏模式**（鼠标离开页面自动伪装，含「回来自动恢复」「切标签页也伪装」两个独立开关）；底部输入框新增**收起按钮**（32px 细条 + 蓝色强调条），工具条改为**自适应换行**、不再缺图标；**Cloudflare 验证页完全让位**（原来会把必点的复选框藏起来导致进不去站点） |
+| 1.0.0 | 首个版本：三栏 IDE 外观、agent 装饰、应急伪装键、底部输入框、楼中楼引用卡片、图片缩略图 |
+
+> **1.1.0 里两个值得单独说的修复**：① Cloudflare 验证插页 —— 脚本接管会隐藏原生页面，
+> 而 Turnstile 复选框就在里面，等于把站点锁死；现在检测到插页就完全不接管。
+> ② 底部输入框收起后「完全看不见」—— 实测是**没有轮廓**（卡片边框和填充同色，对比 1.000:1）
+> 且唯一文字只有 2.43:1，现在换了填充/描边并加了蓝色强调条（9.47:1）。
 
 ## 长什么样
 
@@ -280,14 +295,23 @@ V2EX 没有结构化的引用节点，「楼中楼」就是回复正文以 `@某
 | 通知菜单收养 | 有 | 无；通知入口直接跳 `/notifications` |
 | 原生 DOM | 隐藏后另建 | 隐藏但**保留**（所以 `thankReply` 等原生函数仍可用） |
 
-原脚本的 CF 盾检测这里去掉了：V2EX 不套 Cloudflare challenge，且脚本本来就不发请求
-（仅有的 `fetch` 是列表「加载更多」，同源 `?p=N` 的 HTML）。
+> **Cloudflare 插页避让**（原脚本的 CF 盾检测曾被删掉，现已补回并加强）：
+> V2EX 现在会在前面挂 Cloudflare 的「正在验证…」插页（Turnstile 复选框），
+> 那个复选框**必须让用户点**。脚本会把原生页面整体隐藏，一旦接管就把它藏起来了 ——
+> 所以检测到插页时脚本**完全让位**：不注入样式、不建 rail/main、不摘
+> `html.v2cx-locked`，连 Esc / Ctrl+, 都不抢。插页是启动之后才出现的话，
+> MutationObserver 会在它出现的瞬间撤掉接管。详见
+> [设置与隐蔽性扩展指南](docs/settings-and-stealth-guide.md#cloudflare-验证页避让)。
 
 ## 已验证的行为
 
-`npm test` 在 jsdom 里加载**真实 V2EX 页面标记**（`ref/*.html` 抓取快照）跑 **961 条断言**：
+`npm test` 在 jsdom 里加载**真实 V2EX 页面标记**（`ref/*.html` 抓取快照）跑 **981 条断言**：
 
 - 11 类路由（`/`、各 `?tab=`、`/recent`、`/go/x`、`/t/x`、`/member/x`、`/planes`）+ 未接管路由 + 空 DOM 兜底
+- **Cloudflare 让位**：启动即命中插页时不加 `html.v2cx` / `v2cx-locked`、不注入样式、不建
+  rail/main；校验表单与 Turnstile 容器仍在且可见；Esc² 与 Ctrl+, 都不抢；
+  插页**稍后才注入**时自动撤掉接管（摘类、移除 main/rail、移除样式表、并停掉伪装误触）；
+  而且**不会误判** —— 正常页面上的 CF 统计脚本不触发让位
 - 列表行 / 楼层 / 楼号 / 时间本地化 / 分页 chip / 节点筛选
 - 伪装装饰：思考块覆盖率、`Worked for Ns` 格式、英文正文、折叠交互、只加在回复楼、
   每层 4 个胶囊按钮、`data-reply-id`、**渲染确定性**（刷新不闪）
@@ -386,7 +410,7 @@ docs/settings-and-stealth-guide.md
 ref/README.md               测试夹具说明（来源、内容、怎么重新抓）
 ref/*.html                  真实 V2EX 页面快照，仅供测试
 
-tools/test-jsdom.js         npm test        —— 961 条断言
+tools/test-jsdom.js         npm test        —— 981 条断言
 tools/test-harness.js       npm run harness —— 本地测试台
 tools/shots.sh              npm run shots   —— 无头 Chrome 批量截图
 tools/measure-contrast.js   npm run contrast—— 从截图像素测「有效对比度」

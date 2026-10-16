@@ -467,6 +467,81 @@ function doSomething() {
 
 ---
 
+## Cloudflare 验证页避让
+
+### 为什么必须要做
+
+V2EX 现在会在前面挂 Cloudflare 的「正在验证…」插页（Turnstile 复选框）。
+那个复选框**必须让用户亲手点一下**，而本脚本接管时会把原生页面整体藏起来：
+
+```css
+html.v2cx.v2cx-locked #Top,
+html.v2cx.v2cx-locked #Wrapper,
+html.v2cx.v2cx-locked #Bottom { display: none !important; }
+```
+
+于是一旦接管，复选框就被藏进 `display:none` 里 —— 用户永远点不到，**站点直接进不去**。
+这不是「好不好看」的问题，是功能被破坏，所以优先级排在所有外观逻辑之前。
+
+> 顺带修掉一条错误注释：README 里原先写着「V2EX 不套 Cloudflare challenge」，
+> 那是早期观察，现在不成立了。检测已补回。
+
+### 判据：怎么认出插页
+
+`challengeActive()`，任一命中即算（宁可漏判也有 observer 兜底，但不能误判把正常页挡掉）：
+
+| 类别 | 判据 | 说明 |
+|---|---|---|
+| 结构 | `#challenge-form`、`#challenge-running`、`#challenge-stage`、`#cf-wrapper`、`#cf-content`、`#turnstile-wrapper`、`.cf-turnstile`、`.cf-browser-verification` | 这些 id/class 只属于 CF 插页，站内不会撞 |
+| 脚本 | `<script src*="/cdn-cgi/challenge-platform">`、`src*="challenges.cloudflare.com"` | 只在插页里出现 |
+| 标题 | `Just a moment…` / `Attention Required!` / `正在验证` **且**同时存在 CF 脚本 | 单独看标题会误判，必须配脚本信号 |
+| meta | `meta[http-equiv=refresh]` **且**有 `/cdn-cgi/` 脚本 | 兼容老式跳转页 |
+
+**`static.cloudflareinsights.com` 单独不算** —— 那是 CF 给正常站点也加的统计 beacon，
+拿它当判据会把整个 V2EX 都判成插页。测试里专门有一条「只有 CF 统计脚本时照常接管」。
+
+### 两条路都要走
+
+```js
+// bootstrap() 里，必须排在 injectStyle() 之前
+startCloudflareWatch();                     // 挂 observer + 立刻查一次
+if (challengeBailed || challengeActive()) {
+  bailToNative();
+  return;                                   // 后面什么都不做
+}
+injectStyle();
+```
+
+1. **启动时就命中**：脚本 `@run-at document-start`，通常早于插页解析完，所以要能看
+   `<head>` 里的静态标记；命中就直接 `return`，**连样式表都不注入** —— 没注入就没什么要撤的。
+2. **插页稍后才出现**：Cloudflare 的动态页会在脚本跑完之后才注入 `#challenge-form`，
+   所以用 `MutationObserver` 盯 `childList + attributes`，一出现就调 `bailToNative()`。
+
+`bailToNative()` 是幂等的总撤场：摘掉 `v2cx` / `v2cx-locked` / 浅色 / dim / boss-on /
+rail-open 等所有状态类、移除 `.v2cx-main` `.v2cx-rail` `.v2cx-boss` `.v2cx-modal`、
+清掉 `--v2cx-page-opacity`、`stop()` 掉侧边栏模式、移除注入的样式表。
+**故意不动 favicon**：标签图标是 Codex 图标不影响点验证，目标是「绝不挡住校验」，
+能少动一样就少动一样。
+
+### 键盘也不能抢
+
+```js
+// bindStealthKeys / bindSettingsKeys 的开头
+if (shouldAvoidTakeover()) return;
+```
+
+否则 Esc 会被脚本吃掉变成「切伪装视图」，Tab / Enter 也可能被 `preventDefault` 干扰，
+用户在插页上按什么都不对。`shouldAvoidTakeover()` = `challengeBailed || challengeActive() || otherThemeActive()`，
+`scheduleApply()` 也用它做闸门 —— 让位之后不会再重新接管。
+
+### 扩展提醒
+
+以后再加「会碰原生页面显示」的功能（新的全屏浮层、隐藏某块原生 DOM 的规则……），
+都要先问一句：**这个页面有没有可能是别人（Cloudflare / 站点自己）要求用户交互的？**
+如果会，把它挂进 `shouldAvoidTakeover()` 的判断里，而不是在功能内部各自打补丁。
+
+---
+
 ## 怎么再加一个自动反应
 
 `createPageLeaveWatcher()` 只负责回答「鼠标还在不在页面里」，复用它可以低成本地挂别的行为。
@@ -536,7 +611,7 @@ npm install   # 只装 jsdom
 npm test      # = node tools/test-jsdom.js
 ```
 
-当前结果是 **961 passed, 0 failed**（加这两个功能之前是 852）。
+当前结果是 **981 passed, 0 failed**（加这两个功能之前是 852）。
 其中这次新增的：
 
 - 设置面板用例里多了一组**不透明度断言**：默认变量 = `1` 且不加 `v2cx-page-dim`、
@@ -594,6 +669,10 @@ npm test      # = node tools/test-jsdom.js
    收起状态下点任意楼层的「回复」，输入框应当自动展开并写好 `@某人`。
 7. **和 `stealth` 的关系**：把「伪装模式」关掉，侧边栏模式应当整体失效（页面不再自动伪装）。
 
+9. **Cloudflare 插页**：如果在 V2EX 前面遇到「正在验证…」插页，页面上应当**只有**
+   Cloudflare 自己的东西 —— 没有左栏、没有 Codex 顶栏，复选框能正常点；
+   验证通过后回到正常页面，脚本才接管。按 Esc / Ctrl+, 在插页上都不该有反应。
+
 ---
 
 ## 文件索引
@@ -622,6 +701,10 @@ npm test      # = node tools/test-jsdom.js
 | `bossOn()` | 当前是否在伪装视图里（看 `<html>` 上的 `v2cx-boss-on`） |
 | `settingsOpen()` | 设置面板是否开着（`bossAutoHideAllowed()` 用它挡掉自动伪装） |
 | `otherThemeActive()` | 是否别的 Codex 主题在跑（同一个守卫用） |
+| `challengeActive()` | 眼前这页是不是 Cloudflare 验证插页（结构 / 脚本 / 标题+脚本 / meta 四类判据） |
+| `bailToNative()` | 幂等总撤场：摘掉所有状态类、移除自绘 DOM、停侧边栏模式、移除样式表 |
+| `startCloudflareWatch()` | MutationObserver 盯插页动态出现，一出现就 `bailToNative()` |
+| `shouldAvoidTakeover()` | 统一闸门 = CF 插页 / 已让位 / 别的主题在跑；键盘绑定与 `scheduleApply()` 都用它 |
 | `SETTING_SPEC` | 面板控件的声明式表（6 个分组；`pageOpacity` 在「外观」，三个开关在「侧边栏模式」） |
 | `SETTING_CSS_VAR` | `{ name, unit }` 形式的 CSS 变量登记表（拖拽预览用） |
 | `previewSetting()` | 拖控件时的即时预览：先看 `item.preview`，再看 `SETTING_CSS_VAR` |

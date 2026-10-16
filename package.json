@@ -1,6 +1,6 @@
 {
   "name": "v2ex-codex",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "V2EX · Codex 外观 —— 把 V2EX 换成 Codex 桌面 app 风格的油猴脚本，附带离线测试台",
   "scripts": {

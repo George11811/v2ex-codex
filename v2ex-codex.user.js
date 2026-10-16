@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         V2EX · Codex 外观
 // @namespace    https://www.v2ex.com/
-// @version      1.0.0
+// @version      1.1.0
 // @description  把 V2EX 换成 Codex 桌面 app 风格（左 rail + 主区 + 右侧代码面板，明暗双模式）。仅改变外观，保留站点原有内容与交互。
 // @author       link
 // @match        https://www.v2ex.com/*
@@ -9,7 +9,8 @@
 // @icon         https://www.v2ex.com/static/icon-192.png
 // @grant        none
 // @run-at       document-start
-// @updateURL    https://raw.githubusercontent.com/George11811/v2ex-codex/master/v2ex-codex.user.js
+// @updateURL    https://raw.githubusercontent.com/George11811/v2ex-codex/main/v2ex-codex.user.js
+// @downloadURL  https://raw.githubusercontent.com/George11811/v2ex-codex/main/v2ex-codex.user.js
 // ==/UserScript==
 
 /*
@@ -5594,6 +5595,8 @@
 
   function bindSettingsKeys() {
     window.addEventListener("keydown", (e) => {
+      // Cloudflare 插页上不抢任何按键（Tab / Enter 要留给校验控件）
+      if (shouldAvoidTakeover()) return;
       // Ctrl/⌘ + , —— 和 VS Code / macOS 的「偏好设置」一致
       if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === ",") {
         e.preventDefault();
@@ -5607,6 +5610,8 @@
     const spec = String(cfg("stealthKey") || "esc2").toLowerCase();
 
     window.addEventListener("keydown", (e) => {
+      // Cloudflare 插页上不抢任何按键，尤其不能把 Esc 变成「切伪装视图」
+      if (shouldAvoidTakeover()) return;
       // 设置面板开着时 Esc 先关面板（别再触发应急伪装）
       if (e.key === "Escape" && settingsOpen()) {
         e.preventDefault();
@@ -5937,6 +5942,132 @@
       !!document.getElementById("linuxdo-idea-theme");
   }
 
+  /* ============================== Cloudflare 校验页避让 ==============================
+   *
+   * 背景（踩过的坑）：V2EX 现在会在前面挂 Cloudflare 的「正在验证…」插页
+   * （Turnstile 那个复选框）。那个插页**必须**让用户点一下，
+   * 而本脚本会把原生页面整体隐藏（html.v2cx-locked #Wrapper { display:none }），
+   * 一旦接管，复选框就被藏起来了 —— 用户永远点不到，站点直接进不去。
+   *
+   * 所以这里的策略和其它 Codex 主题一致：**检测到插页就完全让位**，
+   * 什么都不画、什么都不抢（连 CSS 都不注入），页面上只有 Cloudflare 自己的东西。
+   *
+   * 两条路都要走：
+   *   1. 启动时就命中（脚本 @run-at document-start，通常早于插页解析完，
+   *      所以还要看 <head> 里的静态标记）；
+   *   2. 启动时还没有、插页稍后才出现（Cloudflare 的动态页会这样）——
+   *      用 MutationObserver 盯着，一旦出现立刻撤掉接管（见 startCloudflareWatch）。
+   * ================================================================= */
+
+  /** 明确的插页元素名（这些 id/class 只属于 Cloudflare 插页，站内不会撞） */
+  const CF_SELECTOR = [
+    "#challenge-form", "#challenge-running", "#challenge-stage",
+    "#cf-challenge-running", "#cf-please-wait", "#cf-wrapper", "#cf-content",
+    "#turnstile-wrapper", ".cf-turnstile", ".cf-browser-verification"
+  ].join(", ");
+
+  /**
+   * 眼前这页是不是 Cloudflare 的验证/拦截插页。
+   * 判据分两类，任一命中即算：
+   *   - 结构类：上面那几个 id/class；
+   *   - 脚本类：`/cdn-cgi/challenge-platform/...` 或 `static.cloudflareinsights.com`
+   *     —— 前者只在插页里出现，后者是 CF 给正常页面也加的统计脚本，
+   *     所以**必须**和别的信号一起看，不能单独成立（否则整个 V2EX 都会被误判）。
+   * 标题只当辅助（"Just a moment..." / "Attention Required!"），
+   * 且要求同时存在 CF 脚本，避免标题里恰好有这些词。
+   */
+  function challengeActive() {
+    const doc = document;
+    try {
+      if (doc.querySelector(CF_SELECTOR)) return true;
+      const scripts = doc.scripts || [];
+      let cfScript = false;
+      for (const s of scripts) {
+        const src = (s && s.src) || "";
+        if (src.indexOf("/cdn-cgi/challenge-platform") >= 0) return true;
+        if (src.indexOf("challenges.cloudflare.com") >= 0) return true;
+        if (src.indexOf("static.cloudflareinsights.com") >= 0) cfScript = true;
+      }
+      if (cfScript && /just a moment|attention required|checking your browser|正在验证|验证您是否/i.test(doc.title || "")) {
+        return true;
+      }
+      if (doc.querySelector('meta[http-equiv="refresh" i]') &&
+          doc.querySelector('script[src*="/cdn-cgi/"]')) return true;
+    } catch {
+      // 任何异常都当作「不是插页」，宁可接管错了（有 observer 兜底）也不能把正常页面挡住
+      return false;
+    }
+    return false;
+  }
+
+  let challengeBailed = false;
+  let challengeObserver = null;
+
+  /**
+   * 让位：撤掉一切接管痕迹，把页面还给 Cloudflare / 原生站点。
+   * 幂等，observer 和启动路径都会调。
+   * 注意故意**不**动 favicon：标签页图标是 Codex 图标并不影响点验证，
+   * 而这里的目标是「绝不挡住校验」，能少动一样就少动一样。
+   */
+  function bailToNative() {
+    if (challengeBailed) return;
+    challengeBailed = true;
+    try {
+      const root = document.documentElement;
+      root.classList.remove(ROOT_CLASS, LOCK_CLASS, LIGHT_CLASS, DIMMED_CLASS,
+        "v2cx-rail-open", "v2cx-boss-on", "v2cx-composer-collapsed");
+      root.style.removeProperty("--v2cx-page-opacity");
+      document.querySelector(".v2cx-boss")?.remove();
+      document.querySelector(".v2cx-modal")?.remove();
+      document.querySelector(".v2cx-main")?.remove();
+      document.querySelector(".v2cx-rail")?.remove();
+      // 侧边栏模式：不能在这个页面上因为「鼠标离开」而切伪装
+      if (sidebarAutoHide) {
+        sidebarAutoHide.stop();
+        sidebarAutoHide = null;
+      }
+      // 已经注入的样式表留着无害（所有规则都在 html.v2cx 下，类已摘掉），
+      // 但清掉更干净，也避免 --cx-* 变量影响站点自身
+      document.getElementById(STYLE_ID)?.remove();
+      console.info("[v2ex-codex] 检测到 Cloudflare 验证页，已让位（不做任何接管）");
+    } catch (err) {
+      console.warn("[v2ex-codex] 让位时出错（忽略）", err);
+    }
+  }
+
+  /**
+   * 盯着插页出现（Cloudflare 的动态页会在脚本跑完之后才注入 challenge-form）。
+   * 撤销 observer 的时机只有「命中并让位」——让位之后这个脚本已经不再接管任何东西，
+   * 留在页面上的开销只是一个不再命中的回调。
+   */
+  function startCloudflareWatch() {
+    if (challengeObserver) return;
+    const root = document.documentElement;
+    if (!root) return;
+    const check = () => {
+      if (challengeBailed) return;
+      if (challengeActive()) {
+        challengeObserver?.disconnect();
+        challengeObserver = null;
+        bailToNative();
+      }
+    };
+    try {
+      challengeObserver = new MutationObserver(check);
+      challengeObserver.observe(root, {
+        childList: true, subtree: true, attributes: true, attributeFilter: ["class", "id", "src"]
+      });
+    } catch {
+      challengeObserver = null;
+    }
+    check();
+  }
+
+  /** 要不要放弃接管（别的 Codex 主题在跑 / 这是 Cloudflare 插页） */
+  function shouldAvoidTakeover() {
+    return challengeBailed || challengeActive() || otherThemeActive();
+  }
+
   let scheduled = false;
   function scheduleApply() {
     if (scheduled) return;
@@ -5944,10 +6075,15 @@
     requestAnimationFrame(() => {
       scheduled = false;
       try {
-        if (otherThemeActive()) {
-          document.documentElement.classList.remove(ROOT_CLASS, LOCK_CLASS, "v2cx-rail-open");
-          document.querySelector(".v2cx-main")?.remove();
-          document.querySelector(".v2cx-rail")?.remove();
+        if (shouldAvoidTakeover()) {
+          // Cloudflare 插页要的是「原样」，所以走完整的让位；只是别的主题在跑时
+          // 保持原来的轻量撤场即可（那是并存场景，不该去动人家的样式表）
+          if (challengeBailed || challengeActive()) bailToNative();
+          else {
+            document.documentElement.classList.remove(ROOT_CLASS, LOCK_CLASS, "v2cx-rail-open");
+            document.querySelector(".v2cx-main")?.remove();
+            document.querySelector(".v2cx-rail")?.remove();
+          }
           return;
         }
         document.documentElement.classList.add(ROOT_CLASS);
@@ -5971,6 +6107,14 @@
       return;
     }
 
+    // 最重要的一步，必须排在 injectStyle 之前：Cloudflare 插页上我们什么都不做，
+    // 连样式都不注入（注入了就等于把原生页面藏起来，复选框就点不到了）。
+    startCloudflareWatch();
+    if (challengeBailed || challengeActive()) {
+      bailToNative();
+      return;
+    }
+
     injectStyle();
     if (!otherThemeActive()) {
       syncMode();
@@ -5983,7 +6127,7 @@
 
     // 标签重新可见时再刷一次 favicon（部分浏览器未聚焦时会缓存旧图标）
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && !otherThemeActive()) applyFavicon();
+      if (document.visibilityState === "visible" && !shouldAvoidTakeover()) applyFavicon();
     });
 
     bindLightbox();
@@ -5997,13 +6141,18 @@
     sidebarAutoHide.start();
 
     domReady().then(() => {
+      // 页面加载完毕再确认一次：有些插页（或 CF 的挑战脚本）是这时候才成形的
+      if (challengeActive()) {
+        bailToNative();
+        return;
+      }
       scheduleApply();
 
       // ⌘/Ctrl + K → 搜索
       window.addEventListener("keydown", (e) => {
         if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
         if ((e.key || "").toLowerCase() !== "k") return;
-        if (otherThemeActive()) return;
+        if (shouldAvoidTakeover()) return;
         const tag = (e.target && e.target.tagName) || "";
         if (tag === "TEXTAREA" || tag === "INPUT") return;
         e.preventDefault();

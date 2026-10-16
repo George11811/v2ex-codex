@@ -665,8 +665,116 @@ async function runComposerCase() {
   dom2.window.close();
 }
 
-/** 拖拽把手：位置 + 拖动写入 CSS 变量 + 双击重置 */
-async function runResizerCase() {
+/**
+ * Cloudflare 验证页避让。
+ *
+ * 这是实测踩过的坑：V2EX 前面挂了 Cloudflare 的「正在验证…」插页，
+ * 而脚本会把原生页面整体隐藏（html.v2cx-locked #Wrapper { display:none }），
+ * 一旦接管，那个必须点一下的复选框就被藏起来 —— 站点直接进不去。
+ * 所以这里两条路都要测：启动时就命中、以及插页稍后才出现（动态注入）。
+ */
+async function runCloudflareCase() {
+  const name = "Cloudflare 让位";
+  console.log(`\n──── ${name} ────`);
+
+  // 一个最小但结构正确的 CF 插页
+  const cfHtml = (body) => `<!doctype html><html><head><title>Just a moment...</title>
+    <script src="/cdn-cgi/challenge-platform/h/b/orchestrate/chl_page/v1"></script>
+    </head><body><div class="main-content">${body}</div></body></html>`;
+  const CF_BODY = `
+    <h1>www.v2ex.com</h1>
+    <p>Verifying you are human. This may take a few seconds.</p>
+    <div id="turnstile-wrapper"><div class="cf-turnstile"></div></div>
+    <form id="challenge-form" action="/cdn-cgi/challenge-platform/x">
+      <div id="cf-challenge-running">Checking your browser…</div>
+      <button type="submit">Verify</button>
+    </form>`;
+
+  const startChallenge = async (html, url) => {
+    const dom = new JSDOM(html, { url, runScripts: "dangerously", pretendToBeVisual: true });
+    const win = dom.window, doc = win.document;
+    try { win.eval(USCRIPT); } catch (e) { check(name, "脚本可执行", false, e.message); return dom; }
+    await new Promise((r) => setTimeout(r, 300));
+    return dom;
+  };
+
+  /* ── 1. 启动时就命中插页 ── */
+  const dom = await startChallenge(cfHtml(CF_BODY), "https://www.v2ex.com/");
+  const win = dom.window, doc = win.document, root = doc.documentElement;
+  check(name, "不接管：不加 html.v2cx", !root.classList.contains("v2cx"),
+    JSON.stringify(root.className));
+  check(name, "不接管：不加 v2cx-locked（否则 #Wrapper 被藏）", !root.classList.contains("v2cx-locked"));
+  check(name, "不接管：不注入样式表（连隐藏规则都不存在）",
+    !doc.getElementById("v2ex-codex-theme"));
+  check(name, "不接管：不建 rail / main",
+    !doc.querySelector(".v2cx-rail") && !doc.querySelector(".v2cx-main"));
+  // 校验控件必须原样留在页面上、且可见
+  check(name, "校验表单还在", !!doc.getElementById("challenge-form"));
+  check(name, "校验表单可见（没被任何样式藏起来）",
+    win.getComputedStyle(doc.getElementById("challenge-form")).display !== "none",
+    win.getComputedStyle(doc.getElementById("challenge-form")).display);
+  check(name, "Turnstile 容器还在", !!doc.querySelector("#turnstile-wrapper .cf-turnstile"));
+  check(name, "页面正文容器可见",
+    win.getComputedStyle(doc.querySelector(".main-content")).display !== "none");
+  // 键盘也不能抢：Esc² 不许变成伪装视图
+  win.dispatchEvent(new win.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  win.dispatchEvent(new win.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  check(name, "插页上 Esc² 不触发伪装视图", !root.classList.contains("v2cx-boss-on"));
+  check(name, "插页上不会建出伪装视图", !doc.querySelector(".v2cx-boss"));
+  win.dispatchEvent(new win.KeyboardEvent("keydown", { key: ",", ctrlKey: true, bubbles: true }));
+  check(name, "插页上 Ctrl+, 不开设置面板", !doc.querySelector(".v2cx-modal"));
+  dom.window.close();
+
+  /* ── 2. 插页是启动之后才出现的（Cloudflare 动态页） ── */
+  const dom2 = await startChallenge(
+    stripScripts(fs.readFileSync(path.join(ROOT, "ref/topic.html"), "utf8")),
+    "https://www.v2ex.com/t/1241734");
+  const win2 = dom2.window, doc2 = win2.document, root2 = doc2.documentElement;
+  check(name, "（准备）正常页照常接管", root2.classList.contains("v2cx") &&
+    root2.classList.contains("v2cx-locked") && !!doc2.querySelector(".v2cx-main"));
+  // 模拟 CF 插页注入
+  const injected = doc2.createElement("div");
+  injected.innerHTML = CF_BODY;
+  doc2.body.appendChild(injected);
+  await new Promise((r) => setTimeout(r, 150));
+  check(name, "插页出现后自动让位：摘掉 html.v2cx", !root2.classList.contains("v2cx"),
+    JSON.stringify(root2.className));
+  check(name, "让位：摘掉 v2cx-locked（原生页面重新可见）", !root2.classList.contains("v2cx-locked"));
+  check(name, "让位：移除 main / rail",
+    !doc2.querySelector(".v2cx-main") && !doc2.querySelector(".v2cx-rail"));
+  check(name, "让位：清掉残留状态类",
+    !root2.classList.contains("v2cx-boss-on") && !root2.classList.contains("v2cx-page-dim"));
+  check(name, "让位：注入的样式表被移除", !doc2.getElementById("v2ex-codex-theme"));
+  check(name, "让位：之后 Esc² 也不再触发伪装",
+    (() => {
+      win2.dispatchEvent(new win2.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      win2.dispatchEvent(new win2.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      return !root2.classList.contains("v2cx-boss-on");
+    })());
+  check(name, "让位：校验控件保留在页面上", !!doc2.getElementById("challenge-form"));
+  dom2.window.close();
+
+  /* ── 3. 不能误判：CF 的统计脚本是正常页面也有的 ── */
+  const dom3 = await startChallenge(
+    stripScripts(fs.readFileSync(path.join(ROOT, "ref/home.html"), "utf8")),
+    "https://www.v2ex.com/");
+  const win3 = dom3.window, doc3 = win3.document;
+  // 正常页里插入 CF insights（真实站点上很常见），不应该因此让位
+  const beacon = doc3.createElement("script");
+  beacon.src = "https://static.cloudflareinsights.com/beacon.min.js";
+  doc3.head.appendChild(beacon);
+  const redirect = doc3.createElement("meta");
+  redirect.setAttribute("http-equiv", "refresh");
+  redirect.setAttribute("content", "30");
+  doc3.head.appendChild(redirect);
+  await new Promise((r) => setTimeout(r, 150));
+  check(name, "不误判：只有 CF 统计脚本时照常接管",
+    doc3.documentElement.classList.contains("v2cx") && !!doc3.querySelector(".v2cx-main"),
+    JSON.stringify(doc3.documentElement.className));
+  dom3.window.close();
+}
+
+/** 拖拽把手：位置 + 拖动写入 CSS 变量 + 双击重置 */async function runResizerCase() {
   const name = "拖拽调宽";
   console.log(`
 ──── ${name} ────`);
@@ -1684,6 +1792,7 @@ async function runFallbackCase() {
     }
   }
   try { await runComposerCase(); } catch (e) { check("底部输入框", "测试自身未崩溃", false, String(e)); }
+  try { await runCloudflareCase(); } catch (e) { check("Cloudflare 让位", "测试自身未崩溃", false, String(e)); }
   try { await runStealthCase(); } catch (e) { check("隐蔽性", "测试自身未崩溃", false, String(e)); }
   try { await runSidebarModeCase(); } catch (e) { check("侧边栏模式", "测试自身未崩溃", false, String(e)); }
   try { await runImageCase(); } catch (e) { check("图片缩略图", "测试自身未崩溃", false, String(e)); }
